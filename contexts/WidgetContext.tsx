@@ -1,11 +1,10 @@
 import * as React from "react";
 import { createContext, useCallback, useContext } from "react";
-import { ExtensionStorage } from "@bacons/apple-targets";
+import { Platform } from "react-native";
 
-// Initialize storage with your group ID
-const storage = new ExtensionStorage(
-  "group.com.<user_name>.<app_name>"
-);
+// Expo Go does not include iOS widget native modules.
+// Importing @bacons/apple-targets at top-level can crash/hang the app.
+// This context is a no-op unless running on iOS AND the module is available.
 
 type WidgetContextType = {
   refreshWidget: () => void;
@@ -13,25 +12,31 @@ type WidgetContextType = {
 
 const WidgetContext = createContext<WidgetContextType | null>(null);
 
-export function WidgetProvider({ children }: { children: React.ReactNode }) {
-  // Update widget state whenever what we want to show changes
-  React.useEffect(() => {
-    // set widget_state to null if we want to reset the widget
-    // storage.set("widget_state", null);
+function safeReloadWidget() {
+  if (Platform.OS !== "ios") return;
 
-    // Refresh widget
-    ExtensionStorage.reloadWidget();
+  try {
+    // Dynamic require to avoid crashing Expo Go.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const mod = require("@bacons/apple-targets") as { ExtensionStorage?: any };
+    if (mod?.ExtensionStorage?.reloadWidget) {
+      mod.ExtensionStorage.reloadWidget();
+    }
+  } catch {
+    // Module not available (Expo Go). Ignore.
+  }
+}
+
+export function WidgetProvider({ children }: { children: React.ReactNode }) {
+  React.useEffect(() => {
+    safeReloadWidget();
   }, []);
 
   const refreshWidget = useCallback(() => {
-    ExtensionStorage.reloadWidget();
+    safeReloadWidget();
   }, []);
 
-  return (
-    <WidgetContext.Provider value={{ refreshWidget }}>
-      {children}
-    </WidgetContext.Provider>
-  );
+  return <WidgetContext.Provider value={{ refreshWidget }}>{children}</WidgetContext.Provider>;
 }
 
 export const useWidget = () => {

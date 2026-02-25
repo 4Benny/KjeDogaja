@@ -1,26 +1,35 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 
+let configured = false;
 const GOING_NOTIFS_KEY_PREFIX = "eventfinder:going-notifs:";
 
 export function configureNotificationsOnce() {
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldShowBanner: true,
-      shouldShowList: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-    }),
-  });
+  if (configured) return;
+  configured = true;
+
+ Notifications.setNotificationHandler({
+  handleNotification: async (): Promise<Notifications.NotificationBehavior> => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 }
 
-export async function ensureNotificationPermission(promptIfNeeded = false): Promise<boolean> {
-  const { status: existingStatus } = await Notifications.getPermissionsAsync();
-  if (existingStatus === "granted") return true;
-  if (!promptIfNeeded) return false;
-  const { status } = await Notifications.requestPermissionsAsync();
-  return status === "granted";
+export async function ensureNotificationPermission(promptIfNeeded: boolean = false): Promise<boolean> {
+  try {
+    const existing = await Notifications.getPermissionsAsync();
+    if (existing.status === "granted") return true;
+
+    if (!promptIfNeeded) return false;
+
+    const requested = await Notifications.requestPermissionsAsync();
+    return requested.status === "granted";
+  } catch {
+    return false;
+  }
 }
 
 function goingNotifsKey(eventId: string) {
@@ -85,24 +94,20 @@ export async function scheduleGoingReminders(params: {
   }
 }
 
-export async function presentNewEventNotification(params: {
+export async function presentNewEventNotification(args: {
   eventId: string;
   organizerUsername: string;
   eventTitle: string;
 }) {
-  const allowed = await ensureNotificationPermission(false);
-  if (!allowed) return;
+  const ok = await ensureNotificationPermission(false);
+  if (!ok) return;
 
-  try {
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: "Nov dogodek",
-        body: `${params.organizerUsername} je objavil(a): ${params.eventTitle}`,
-        data: { eventId: params.eventId },
-      },
-      trigger: null,
-    });
-  } catch (err) {
-    console.error("[Notifications] Failed presenting new-event notification:", err);
-  }
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: args.eventTitle,
+      body: `${args.organizerUsername} je objavil nov dogodek`,
+      data: { eventId: args.eventId },
+    },
+    trigger: null,
+  });
 }

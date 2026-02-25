@@ -1,6 +1,6 @@
 import { supabase } from "@/app/integrations/supabase/client";
 
-type ResolveOptions = {
+type ResolveArgs = {
   bucket: string;
   value: string | null | undefined;
   expiresIn?: number;
@@ -47,57 +47,34 @@ function tryExtractBucketPath(bucket: string, value: string): string | null {
   return null;
 }
 
-export function extractStoragePath({ bucket, value }: { bucket: string; value: string | null | undefined }): string | null {
+export function extractStoragePath(value: string | null | undefined): string | null {
   if (!value) return null;
-  return tryExtractBucketPath(bucket, value);
+  const v = String(value).trim();
+  if (!v) return null;
+  if (v.startsWith("http://") || v.startsWith("https://")) return v;
+
+  // Strip common prefixes
+  return v.replace(/^\//, "");
 }
 
-export async function resolveStorageUrl({ bucket, value, expiresIn }: ResolveOptions): Promise<string | null> {
-  if (!value) return null;
+export async function resolveStorageUrl({ bucket, value, expiresIn = 60 * 60 }: ResolveArgs): Promise<string | null> {
+  const path = extractStoragePath(value);
+  if (!path) return null;
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
 
-  // Keep signed URLs
-  if (value.startsWith("http") && value.includes(`/storage/v1/object/sign/${bucket}/`)) {
-    return value;
+  // Try signed URL first (works for private buckets, and also for public buckets).
+  try {
+    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, expiresIn);
+    if (!error && data?.signedUrl) return data.signedUrl;
+  } catch {
+    // ignore
   }
 
-  const path = tryExtractBucketPath(bucket, value);
-  const exp = expiresIn ?? DEFAULT_EXPIRES_IN;
-
-  if (path) {
-    const key = cacheKey({ bucket, path, exp });
-    const cached = storageUrlCache.get(key);
-    if (cached && cached.expiresAtMs > Date.now() + 30_000) {
-      return cached.url;
-    }
+  // Fallback to public URL.
+  try {
+    const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+    return data?.publicUrl ?? null;
+  } catch {
+    return null;
   }
-
-  if (path) {
-    try {
-      const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, exp);
-      if (!error && data?.signedUrl) {
-        storageUrlCache.set(cacheKey({ bucket, path, exp }), {
-          url: data.signedUrl,
-          expiresAtMs: Date.now() + exp * 1000,
-        });
-        return data.signedUrl;
-      }
-    } catch {
-      // fall back below
-    }
-
-    try {
-      const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-      if (data?.publicUrl) {
-        storageUrlCache.set(cacheKey({ bucket, path, exp }), {
-          url: data.publicUrl,
-          expiresAtMs: Date.now() + exp * 1000,
-        });
-        return data.publicUrl;
-      }
-    } catch {
-      // fall back below
-    }
-  }
-
-  return value;
 }

@@ -1,0 +1,78 @@
+{
+  "expo": {
+    "name": "Kje Dogaja",
+    "slug": "kje-dogaja",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/app-icon-1024.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#140B2D"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.kjedogaja.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationWhenInUseUsageDescription": "Lokacijo uporabljamo za prikaz bližnjih dogodkov.",
+        "NSPhotoLibraryUsageDescription": "Dostop do fotografij potrebujemo za nalaganje slik dogodkov.",
+        "NSPhotoLibraryAddUsageDescription": "Dostop do fotografij potrebujemo za shranjevanje in nalaganje vsebin.",
+        "NSUserNotificationsUsageDescription": "Obvestila uporabljamo za opomnike dogodkov in nove dogodke organizatorjev."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon-1024.png",
+        "backgroundColor": "#140B2D"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.kjedogaja.app",
+      "permissions": [
+        "POST_NOTIFICATIONS",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/images/logo.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-font",
+      "expo-router",
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Dostop do fotografij potrebujemo za nalaganje slik dogodkov."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Lokacijo uporabljamo za prikaz bližnjih dogodkov."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#C918FF"
+        }
+      ]
+    ],
+    "scheme": "kjedogaja",
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "backendUrl": ""
+    }
+  }
+}

@@ -125,7 +125,8 @@ export default function VerifyOTPScreen() {
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : "padding"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
         style={styles.keyboardView}
       >
         <View style={styles.content}>

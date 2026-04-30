@@ -1,4 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import * as Notifications from "expo-notifications";
 import React, { createContext, ReactNode, useContext, useEffect, useRef } from "react";
@@ -9,8 +8,6 @@ import {
   ensureNotificationPermission,
   presentNewEventNotification,
 } from "@/utils/notifications";
-
-const NOTIF_PROMPT_KEY = "eventfinder:prompted-notifications";
 
 type NotificationsContextValue = {
   ensurePermission: (promptIfNeeded?: boolean) => Promise<boolean>;
@@ -31,21 +28,6 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     configureNotificationsOnce();
-
-    const promptOnce = async () => {
-      try {
-        const already = await AsyncStorage.getItem(NOTIF_PROMPT_KEY);
-        if (already) return;
-
-        // Mark as prompted regardless of user choice to avoid repeated prompts.
-        await AsyncStorage.setItem(NOTIF_PROMPT_KEY, "1");
-        await ensureNotificationPermission(true);
-      } catch (err) {
-        console.error("[Notifications] Prompt once failed:", err);
-      }
-    };
-
-    promptOnce();
 
     const responseSub = Notifications.addNotificationResponseReceivedListener((response) => {
       const eventId = (response.notification.request.content.data as any)?.eventId as string | undefined;

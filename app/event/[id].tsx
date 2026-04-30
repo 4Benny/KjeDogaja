@@ -337,12 +337,13 @@ export default function EventDetailScreen() {
 
     const now = new Date();
     const eventStart = new Date(event.starts_at);
+    const uncheckCutoff = new Date(eventStart.getTime() - 24 * 60 * 60 * 1000); // 24 hours before
 
-    // Check if event has started - user cannot uncheck if event has started
-    if (isGoing && now >= eventStart) {
+    // Check uncheck cutoff: user cannot uncheck within 24 hours before the event
+    if (isGoing && now >= uncheckCutoff) {
       setToast({
         visible: true,
-        message: "Ne morete odstraniti udeležbe, dogodek se je že začel",
+        message: "Ne morete odstraniti udeležbe 24 ur pred dogodkom",
         type: "error",
       });
       return;
@@ -364,7 +365,7 @@ export default function EventDetailScreen() {
         setIsGoing(false);
         setGoingCount((prev) => Math.max(0, prev - 1));
 
-        await cancelGoingReminders(eventId);
+        await cancelGoingReminders(eventId as string);
 
         setToast({
           visible: true,
@@ -400,7 +401,7 @@ export default function EventDetailScreen() {
 
         if (hasPermission) {
           await scheduleGoingReminders({
-            eventId,
+            eventId: eventId as string,
             eventTitle: event.title,
             startsAtISO: event.starts_at,
           });
@@ -837,7 +838,7 @@ export default function EventDetailScreen() {
     }
 
     try {
-      const storagePath = extractStoragePath({ bucket: "event-images", value: imagePathOrUrl ?? undefined });
+      const storagePath = extractStoragePath(imagePathOrUrl ?? undefined);
       if (storagePath) {
         const { error: removeError } = await supabase.storage.from("event-images").remove([storagePath]);
         if (removeError) {

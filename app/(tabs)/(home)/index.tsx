@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   StyleSheet,
@@ -13,7 +12,8 @@ import {
   ScrollView,
   Platform,
 } from "react-native";
-import { useTheme } from "@react-navigation/native";
+
+import { useTheme, useFocusEffect } from "@react-navigation/native";
 import { useRouter, Stack, useLocalSearchParams } from "expo-router";
 import * as Location from "expo-location";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -80,7 +80,7 @@ export default function HomeScreen() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(CITY_FALLBACK_COORDS["slovenia"]);
   const [selectedRegion, setSelectedRegion] = useState<string>("");
   const [selectedGenre, setSelectedGenre] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -143,51 +143,60 @@ export default function HomeScreen() {
     try {
       locationLoadedRef.current = true;
       
-      const storedLocation = await AsyncStorage.getItem(LOCATION_STORAGE_KEY);
+      // Batch AsyncStorage reads to reduce I/O on Android
+      const [storedLocation, selectedCity] = await Promise.all([
+        AsyncStorage.getItem(LOCATION_STORAGE_KEY),
+        AsyncStorage.getItem(SELECTED_CITY_KEY),
+      ]);
+
       if (storedLocation) {
-        const { lat, lng } = JSON.parse(storedLocation);
-        console.log("[Feed] Loaded location from storage:", lat, lng);
-        setLocation({ lat, lng });
-        return;
+        try {
+          const { lat, lng } = JSON.parse(storedLocation);
+          console.log("[Feed] Loaded location from storage:", lat, lng);
+          setLocation({ lat, lng });
+          return;
+        } catch (parseErr) {
+          console.warn("[Feed] Failed parsing stored location, requesting fresh");
+        }
       }
 
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status === "granted") {
-        const loc = await Location.getCurrentPositionAsync({});
-        const lat = loc.coords.latitude;
-        const lng = loc.coords.longitude;
-        console.log("[Feed] Got location from GPS:", lat, lng);
-        setLocation({ lat, lng });
+      // Keep the fallback location active so the feed can render immediately.
+      const fallbackCoords = (normalizeCityKey(selectedCity) && CITY_FALLBACK_COORDS[normalizeCityKey(selectedCity)]) || CITY_FALLBACK_COORDS["slovenia"];
+      setLocation(fallbackCoords);
 
-        await AsyncStorage.setItem(
-          LOCATION_STORAGE_KEY,
-          JSON.stringify({ lat, lng })
-        );
-      } else {
-        const selectedCity = await AsyncStorage.getItem(SELECTED_CITY_KEY);
-        const selectedKey = normalizeCityKey(selectedCity);
-        if (selectedKey && CITY_FALLBACK_COORDS[selectedKey]) {
-          const coords = CITY_FALLBACK_COORDS[selectedKey];
-          console.log("[Feed] Using city fallback:", selectedCity, coords);
-          setLocation(coords);
+      // Check existing permission. Do not auto-prompt at startup.
+      const { status: existingStatus } = await Location.getForegroundPermissionsAsync();
+      if (existingStatus === "granted") {
+        try {
+          const loc = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+            timeInterval: 5000,
+            distanceInterval: 100,
+          });
+          const lat = loc.coords.latitude;
+          const lng = loc.coords.longitude;
+          console.log("[Feed] Got location from GPS:", lat, lng);
+          setLocation({ lat, lng });
+
           await AsyncStorage.setItem(
             LOCATION_STORAGE_KEY,
-            JSON.stringify(coords)
+            JSON.stringify({ lat, lng })
           );
-        } else {
-          const coords = CITY_FALLBACK_COORDS["slovenia"];
-          console.log("[Feed] Using Slovenia fallback:", coords);
+        } catch (gpsErr) {
+          console.warn("[Feed] GPS failed, using fallback:", gpsErr);
+          // Fallback to city coordinates
+          const selectedKey = normalizeCityKey(selectedCity);
+          const coords = (selectedKey && CITY_FALLBACK_COORDS[selectedKey]) || CITY_FALLBACK_COORDS["slovenia"];
           setLocation(coords);
-          await AsyncStorage.setItem(
-            LOCATION_STORAGE_KEY,
-            JSON.stringify(coords)
-          );
+          await AsyncStorage.setItem(LOCATION_STORAGE_KEY, JSON.stringify(coords));
         }
+      } else {
+        console.log("[Feed] Location permission not granted, using city fallback");
+        await AsyncStorage.setItem(LOCATION_STORAGE_KEY, JSON.stringify(fallbackCoords));
       }
     } catch (err) {
       console.error("[Feed] Error loading location:", err);
-      const coords = CITY_FALLBACK_COORDS["slovenia"];
-      setLocation(coords);
+      setLocation(CITY_FALLBACK_COORDS["slovenia"]);
     }
   }, []);
 
@@ -203,6 +212,7 @@ export default function HomeScreen() {
       return;
     }
 
+    // Cancel previous fetch
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -220,7 +230,7 @@ export default function HomeScreen() {
       if (organizerFilterId && isLikelyUuid(organizerFilterId)) {
         console.log("[Feed] Fetching published events for organizer:", organizerFilterId);
       } else {
-        console.log("[Feed] Fetching published upcoming events (ends_at >=", now, ")");
+        console.log("[Feed] Fetching published upcoming events");
       }
 
       let query = supabase
@@ -233,10 +243,17 @@ export default function HomeScreen() {
       if (organizerFilterId && isLikelyUuid(organizerFilterId)) {
         query = query.eq('organizer_id', organizerFilterId).order('starts_at', { ascending: false });
       } else {
-        query = query.gte("ends_at", now).order("starts_at", { ascending: true });
+        query = query/*.gte("ends_at", now)*/.order("starts_at", { ascending: true });
       }
 
-      query = (query as any).abortSignal(abortControllerRef.current.signal);
+      // Only apply abortSignal if the method exists (safer for different Supabase versions)
+      if (typeof (query as any).abortSignal === 'function') {
+        try {
+          query = (query as any).abortSignal(abortControllerRef.current.signal);
+        } catch (abortErr) {
+          console.debug("[Feed] abortSignal not supported, continuing without abort");
+        }
+      }
 
       // Only apply interactive filters on the main feed.
       if (!(organizerFilterId && isLikelyUuid(organizerFilterId))) {
@@ -255,8 +272,15 @@ export default function HomeScreen() {
 
       const { data, error } = await query;
 
+      // Check if we were aborted before processing
+      if (abortControllerRef.current.signal.aborted) {
+        console.log("[Feed] Query was aborted, discarding results");
+        return;
+      }
+
       if (error) {
-        if (error.message?.includes('aborted')) {
+        if (error.message?.includes('aborted') || error.message?.includes('Aborted')) {
+          console.log("[Feed] Query aborted");
           return;
         }
         console.error("[Feed] Error fetching events:", error);
@@ -266,7 +290,7 @@ export default function HomeScreen() {
 
       console.log("[Feed] Fetched events count:", data?.length || 0);
       if (data && data.length > 0) {
-        console.log("[Feed] Sample event:", data[0].title, "ends_at:", data[0].ends_at);
+        console.log("[Feed] Sample event:", data[0].title, "starts_at:", data[0].starts_at);
       }
 
       let eventsWithDistance = data || [];
@@ -298,7 +322,9 @@ export default function HomeScreen() {
 
       setEvents(withPosters);
     } catch (err: any) {
-      if (err.name === 'AbortError') {
+      // Silently ignore abort errors - they're expected
+      if (err?.name === 'AbortError' || err?.message?.includes('aborted')) {
+        console.debug("[Feed] Fetch was cancelled");
         return;
       }
       console.error("[Feed] Error:", err);
@@ -339,6 +365,15 @@ export default function HomeScreen() {
       }
     };
   }, [location, selectedRegion, selectedGenre, searchQuery, fetchEvents]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (location) {
+        fetchEvents(true);
+      }
+      return () => {};
+    }, [location, fetchEvents])
+  );
 
   const onRefresh = useCallback(() => {
     console.log("[Feed] Manual refresh triggered");

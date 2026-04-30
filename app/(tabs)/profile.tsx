@@ -89,12 +89,26 @@ export default function ProfileScreen() {
         .eq("id", userId)
         .single();
 
-      query = (query as any).abortSignal(abortControllerRef.current.signal);
+      // Only apply abortSignal if the method exists
+      if (typeof (query as any).abortSignal === 'function') {
+        try {
+          query = (query as any).abortSignal(abortControllerRef.current.signal);
+        } catch (abortErr) {
+          console.debug("[Profile] abortSignal not supported, continuing without abort");
+        }
+      }
 
       const { data, error: fetchError } = await query;
 
+      // Check if we were aborted before processing
+      if (abortControllerRef.current.signal.aborted) {
+        console.log("[Profile] Query was aborted, discarding results");
+        return;
+      }
+
       if (fetchError) {
-        if (fetchError.message?.includes('aborted')) {
+        if (fetchError.message?.includes('aborted') || fetchError.message?.includes('Aborted')) {
+          console.log("[Profile] Query aborted");
           return;
         }
         throw fetchError;
@@ -104,7 +118,8 @@ export default function ProfileScreen() {
       setEditedProfile(data);
       setEditedEmail(user?.email || data.email || "");
     } catch (err: any) {
-      if (err.name === 'AbortError') {
+      if (err?.name === 'AbortError' || err?.message?.includes('aborted')) {
+        console.debug("[Profile] Fetch was cancelled");
         return;
       }
       setError({

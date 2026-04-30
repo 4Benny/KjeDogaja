@@ -35,5 +35,8 @@
         "releaseStatus": "draft"
       }
     }
+  },
+  "cli": {
+    "appVersionSource": "remote"
   }
 }

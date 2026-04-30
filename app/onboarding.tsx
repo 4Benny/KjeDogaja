@@ -10,12 +10,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Image,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Modal } from "@/components/ui/Modal";
 import { supabase } from "@/app/integrations/supabase/client";
 import * as Location from "expo-location";
+import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Brand from "@/constants/Colors";
 import { CITY_FALLBACK_COORDS, normalizeCityKey } from "@/utils/geo";
@@ -40,6 +42,11 @@ export default function OnboardingScreen() {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [age, setAge] = useState("");
+  const [instagram, setInstagram] = useState("@");
+  const [snapchat, setSnapchat] = useState("@");
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [showRegionList, setShowRegionList] = useState(false);
   const [region, setRegion] = useState("");
   const [city, setCity] = useState("");
   const [loading, setLoading] = useState(false);
@@ -51,7 +58,9 @@ export default function OnboardingScreen() {
   useEffect(() => {
     const requestLocation = async () => {
       try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
+        // Check existing permission first before requesting (Android 6.0+ requirement)
+        const { status } = await Location.getForegroundPermissionsAsync();
+
         if (status === "granted") {
           const loc = await Location.getCurrentPositionAsync({});
           const lat = loc.coords.latitude;
@@ -108,7 +117,7 @@ export default function OnboardingScreen() {
 
     const trimmedAge = age.trim();
     const ageNum = trimmedAge ? parseInt(trimmedAge, 10) : null;
-    if (trimmedAge && (ageNum === null || Number.isNaN(ageNum) || ageNum <= 0 || ageNum > 120)) {
+    if (trimmedAge && (ageNum === null || Number.isNaN(ageNum) || ageNum <= 0 || ageNum > 110)) {
       setError({
         title: "Neveljavna starost",
         message: "Prosimo vnesite veljavno starost",
@@ -148,6 +157,32 @@ export default function OnboardingScreen() {
         return;
       }
 
+      let avatarPublicUrl: string | null = null;
+      // If user selected avatar, upload it to storage
+      if (avatarUri) {
+        try {
+          setUploadingAvatar(true);
+          const filePath = `avatars/${user.id}/${Date.now()}.jpg`;
+          const mime = "image/jpeg";
+          const response = await fetch(avatarUri);
+          const arrayBuffer = await response.arrayBuffer();
+
+          const { error: uploadError } = await supabase.storage
+            .from("avatars")
+            .upload(filePath, arrayBuffer, { contentType: mime, upsert: true });
+
+          if (!uploadError) {
+            avatarPublicUrl = supabase.storage.from("avatars").getPublicUrl(filePath).data.publicUrl;
+          } else {
+            console.warn("Avatar upload failed:", uploadError);
+          }
+        } catch (err) {
+          console.error("Avatar upload error:", err);
+        } finally {
+          setUploadingAvatar(false);
+        }
+      }
+
       const { error: insertError } = await supabase
         .from("profiles")
         .insert({
@@ -157,6 +192,9 @@ export default function OnboardingScreen() {
           ...(ageNum ? { age: ageNum } : {}),
           region: region || null,
           city: city || null,
+          avatar_url: avatarPublicUrl,
+          instagram_username: instagram && instagram !== "@" ? instagram : null,
+          snapchat_username: snapchat && snapchat !== "@" ? snapchat : null,
           role: "user",
           show_location: true,
         });
@@ -191,9 +229,16 @@ export default function OnboardingScreen() {
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : "padding"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          scrollEnabled={true}
+          scrollEventThrottle={16}
+        >
           <View style={styles.content}>
             <Text style={styles.title}>Dobrodošli!</Text>
             <Text style={styles.subtitle}>Nastavite svoj profil</Text>
@@ -223,22 +268,33 @@ export default function OnboardingScreen() {
             />
 
             <Text style={styles.label}>Regija</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
-              {SLOVENIAN_REGIONS.map((r) => (
-                <TouchableOpacity
-                  key={r}
-                  style={[
-                    styles.chip,
-                    region === r && styles.chipSelected,
-                  ]}
-                  onPress={() => setRegion(r)}
-                >
-                  <Text style={[styles.chipText, region === r && styles.chipTextSelected]}>
-                    {formatRegionLabel(r)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            <TouchableOpacity
+              style={styles.input}
+              onPress={() => setShowRegionList((s) => !s)}
+              activeOpacity={0.8}
+            >
+              <Text style={{ color: region ? Brand.textPrimary : Brand.textSecondary }}>
+                {region ? formatRegionLabel(region) : "Izberite regijo"}
+              </Text>
+            </TouchableOpacity>
+
+            {showRegionList && (
+              <View style={styles.regionList}>
+                <ScrollView style={{ maxHeight: 220 }}>
+                  {SLOVENIAN_REGIONS.map((r) => (
+                    <TouchableOpacity
+                      key={r}
+                      style={[styles.regionItem, region === r && styles.chipSelected]}
+                      onPress={() => { setRegion(r); setShowRegionList(false); }}
+                    >
+                      <Text style={[styles.chipText, region === r && styles.chipTextSelected]}>
+                        {formatRegionLabel(r)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
 
             <Text style={styles.label}>Mesto</Text>
             <TextInput
@@ -248,6 +304,70 @@ export default function OnboardingScreen() {
               value={city}
               onChangeText={setCity}
               autoCapitalize="words"
+            />
+
+            <Text style={styles.label}>Profilna slika</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+              <TouchableOpacity
+                onPress={async () => {
+                  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                  if (status !== 'granted') {
+                    setError({ title: 'Dovoljenje zavrnjeno', message: 'Dostop do galerije je potreben' });
+                    return;
+                  }
+                  const result = await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                    allowsEditing: true,
+                    aspect: [1, 1],
+                    quality: 0.8,
+                  });
+
+                  if (!result.canceled) {
+                    setAvatarUri(result.assets[0].uri);
+                  }
+                }}
+                style={{ width: 72, height: 72, borderRadius: 12, overflow: 'hidden', backgroundColor: Brand.surfaceDark, justifyContent: 'center', alignItems: 'center' }}
+              >
+                {avatarUri ? (
+                  <Image source={{ uri: avatarUri }} style={{ width: 72, height: 72 }} />
+                ) : (
+                  <Text style={{ color: Brand.textSecondary }}>Izberi</Text>
+                )}
+              </TouchableOpacity>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: Brand.textSecondary, fontSize: 13 }}>Naložite profilno sliko (opcijsko)</Text>
+                {uploadingAvatar && <ActivityIndicator style={{ marginTop: 8 }} />}
+              </View>
+            </View>
+
+            <Text style={styles.label}>Instagram</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="@vašuporabnik"
+              placeholderTextColor={Brand.textSecondary}
+              value={instagram}
+              onChangeText={(text) => {
+                if (!text) return setInstagram("@");
+                if (!text.startsWith("@")) text = "@" + text;
+                setInstagram(text);
+              }}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+
+            <Text style={styles.label}>Snapchat</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="@vašuporabnik"
+              placeholderTextColor={Brand.textSecondary}
+              value={snapchat}
+              onChangeText={(text) => {
+                if (!text) return setSnapchat("@");
+                if (!text.startsWith("@")) text = "@" + text;
+                setSnapchat(text);
+              }}
+              autoCapitalize="none"
+              autoCorrect={false}
             />
 
             <TouchableOpacity
@@ -368,5 +488,19 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.6,
+  },
+  regionList: {
+    borderWidth: 1,
+    borderColor: Brand.borderSubtle,
+    borderRadius: 8,
+    marginBottom: 16,
+    backgroundColor: Brand.surfaceDark,
+    padding: 8,
+  },
+  regionItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginBottom: 6,
   },
 });

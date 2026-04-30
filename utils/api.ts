@@ -4,7 +4,10 @@ import { supabase } from "@/app/integrations/supabase/client";
 
 type Json = any;
 
-const DEFAULT_TIMEOUT_MS = 12000;
+// Android tends to have slower networks, especially on 4G/3G
+const DEFAULT_TIMEOUT_MS = Platform.OS === 'android' ? 20000 : 12000;
+const MAX_RETRIES = 3;
+const RETRY_DELAY_BASE_MS = 1000;
 
 function getConfiguredBackendUrl(): string | null {
   const fromEnv = process.env.EXPO_PUBLIC_BACKEND_URL;
@@ -33,22 +36,47 @@ async function getAuthToken(): Promise<string | null> {
   }
 }
 
+function isNetworkError(err: any): boolean {
+  const message = (err?.message?.toLowerCase() || '');
+  const name = err?.name?.toLowerCase() || '';
+  
+  return (
+    name === 'aborterror' ||
+    message.includes('network') ||
+    message.includes('timeout') ||
+    message.includes('econnrefused') ||
+    message.includes('enotfound') ||
+    message.includes('econnreset') ||
+    message.includes('fetchwithretry') ||
+    (err?.status >= 502 && err?.status <= 504)
+  );
+}
+
 async function requestJson<T = Json>(
   method: string,
   endpoint: string,
   body?: unknown,
-  init?: RequestInit & { timeoutMs?: number }
+  init?: RequestInit & { timeoutMs?: number; retryCount?: number }
 ): Promise<T> {
   const baseUrl = getConfiguredBackendUrl();
   if (!baseUrl) {
     throw new Error("Backend is not configured.");
   }
 
+  // Validate URL format at runtime
+  try {
+    const urlString = endpoint.startsWith("http") ? endpoint : `${baseUrl}${endpoint.startsWith("/") ? "" : "/"}${endpoint}`;
+    new URL(urlString);
+  } catch (err) {
+    throw new Error(`Invalid backend URL: ${err}`);
+  }
+
   const url = endpoint.startsWith("http") ? endpoint : `${baseUrl}${endpoint.startsWith("/") ? "" : "/"}${endpoint}`;
 
   const controller = new AbortController();
   const timeoutMs = init?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const t = setTimeout(() => controller.abort(), timeoutMs);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const retryCount = init?.retryCount ?? 0;
 
   const token = await getAuthToken();
 
@@ -79,12 +107,41 @@ async function requestJson<T = Json>(
       (err as any).status = res.status;
       (err as any).url = url;
       (err as any).platform = Platform.OS;
+      
+      // Retry on server errors
+      if (res.status >= 502 && retryCount < MAX_RETRIES) {
+        const delay = RETRY_DELAY_BASE_MS * Math.pow(2, retryCount);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return requestJson(method, endpoint, body, {
+          ...init,
+          retryCount: retryCount + 1,
+        });
+      }
+      
       throw err;
     }
 
     return parsed;
+  } catch (err: any) {
+    // Retry on network errors (but not AbortError from intentional cancel)
+    if (retryCount < MAX_RETRIES && isNetworkError(err) && err.name !== 'AbortError') {
+      const delay = RETRY_DELAY_BASE_MS * Math.pow(2, retryCount);
+      console.log(`[API] Retry ${retryCount + 1}/${MAX_RETRIES} after ${delay}ms for ${method} ${endpoint}`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return requestJson(method, endpoint, body, {
+        ...init,
+        retryCount: retryCount + 1,
+      });
+    }
+
+    // Don't log AbortError as it's expected when component unmounts
+    if (err.name !== 'AbortError') {
+      console.error(`[API] ${method} ${endpoint} failed:`, err);
+    }
+
+    throw err;
   } finally {
-    clearTimeout(t);
+    clearTimeout(timeout);
   }
 }
 

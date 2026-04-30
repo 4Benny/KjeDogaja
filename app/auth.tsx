@@ -37,7 +37,6 @@ export default function AuthScreen() {
   const [mode, setMode] = useState<Mode>("signin");
   const [emailOrUsername, setEmailOrUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [age, setAge] = useState("");
   const [gender, setGender] = useState<"Moški" | "Ženska" | "">("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<{ title: string; message: string } | null>(null);
@@ -74,7 +73,8 @@ export default function AuthScreen() {
             .from("profiles")
             .select("email")
             .eq("username", input.toLowerCase())
-            .single();
+            .limit(1)
+            .maybeSingle();
 
           if (profileError || !profile || !profile.email) {
             throw new Error("Uporabniško ime ni najdeno");
@@ -143,21 +143,14 @@ export default function AuthScreen() {
           return;
         }
 
-        const trimmedAge = age.trim();
-        const ageNum = trimmedAge ? parseInt(trimmedAge, 10) : null;
-        if (trimmedAge && (ageNum === null || Number.isNaN(ageNum) || ageNum <= 0 || ageNum > 120)) {
-          setError({
-            title: "Neveljavna starost",
-            message: "Prosimo vnesite veljavno starost",
-          });
-          return;
-        }
+        // Age is collected during onboarding after verification. Do not request age here.
 
         // Check if email already exists
         const { data: existingProfile, error: checkError } = await supabase
           .from("profiles")
           .select("id")
           .eq("email", input.toLowerCase())
+          .limit(1)
           .maybeSingle();
 
         if (existingProfile) {
@@ -176,7 +169,6 @@ export default function AuthScreen() {
           options: {
             emailRedirectTo: "https://natively.dev/email-confirmed",
             data: {
-              ...(ageNum ? { age: ageNum } : {}),
               ...(gender ? { gender } : {}),
             },
           },
@@ -189,7 +181,7 @@ export default function AuthScreen() {
         console.log("[Auth] Registracija uspešna, preusmeritev na OTP potrditev");
         router.replace({
           pathname: "/verify-otp",
-          params: { email: input, password, age: age },
+          params: { email: input, password },
         } as any);
       }
     } catch (err: any) {
@@ -221,11 +213,18 @@ export default function AuthScreen() {
       <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
         <KeyboardAvoidingView
           style={styles.keyboardView}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          behavior={Platform.OS === "ios" ? "padding" : "padding"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
         >
-          <ScrollView contentContainerStyle={styles.scrollContent}>
+          <ScrollView 
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            scrollEnabled={true}
+            scrollEventThrottle={16}
+          >
             <Animated.View entering={FadeInDown.duration(400)} style={styles.content}>
-            <View style={styles.headerRow}>
+              <View style={styles.headerRow}>
               <TouchableOpacity onPress={handleBackToFeed} style={styles.backButton}>
                 <IconSymbol
                   ios_icon_name="arrow.left"
@@ -261,14 +260,7 @@ export default function AuthScreen() {
 
             {mode === "signup" && (
               <>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Starost (npr. 18)"
-                  placeholderTextColor={Brand.textSecondary}
-                  value={age}
-                  onChangeText={setAge}
-                  keyboardType="number-pad"
-                />
+                {/* Age is collected during onboarding after verification */}
                 <View style={styles.genderRow}>
                   <TouchableOpacity
                     style={[styles.genderChip, gender === "Moški" && styles.genderChipSelected]}

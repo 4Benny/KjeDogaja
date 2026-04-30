@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import {
   Modal as RNModal,
   View,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Platform,
+  BackHandler,
 } from "react-native";
 import { useTheme } from "@react-navigation/native";
 import * as Brand from "@/constants/Colors";
@@ -42,6 +43,21 @@ export function Modal({
 }: ModalProps) {
   const theme = useTheme();
 
+  // Handle Android back button
+  useEffect(() => {
+    if (!visible) return;
+
+    const subscription = BackHandler.addEventListener(
+      'hardwareBackPress',
+      () => {
+        onClose();
+        return true;
+      }
+    );
+
+    return () => subscription.remove();
+  }, [visible, onClose]);
+
   // If actions are provided, use them
   if (actions) {
     return (
@@ -50,6 +66,7 @@ export function Modal({
         transparent
         animationType="fade"
         onRequestClose={onClose}
+        hardwareAccelerated={true}
       >
         <View style={styles.overlay}>
           <View style={[styles.modal, { backgroundColor: theme.colors.card }]}>
@@ -100,6 +117,7 @@ export function Modal({
         transparent
         animationType="fade"
         onRequestClose={onClose}
+        hardwareAccelerated={true}
       >
         <View style={styles.overlay}>
           <View style={[styles.modal, { backgroundColor: theme.colors.card }]}>
@@ -146,6 +164,7 @@ export function Modal({
       transparent
       animationType="fade"
       onRequestClose={onClose}
+      hardwareAccelerated={true}
     >
       <View style={styles.overlay}>
         <View style={[styles.modal, { backgroundColor: theme.colors.card }]}>

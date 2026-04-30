@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/images/logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#140B2D"
+      "backgroundColor": "#390533"
     },
     "ios": {
       "supportsTablet": true,
@@ -26,18 +26,24 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon-1024.png",
-        "backgroundColor": "#140B2D"
+        "backgroundColor": "#390533"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.kjedogaja.app",
       "permissions": [
         "POST_NOTIFICATIONS",
         "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"
+        "ACCESS_FINE_LOCATION",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
       ],
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO"
-      ]
+      ],
+      "usesCleartextTraffic": false,
+      "networkSecurityConfig": {
+        "domainConfigs": []
+      }
     },
     "web": {
       "favicon": "./assets/images/logo.png",
@@ -72,7 +78,12 @@
     },
     "extra": {
       "router": {},
-      "backendUrl": ""
+      "backendUrl": "",
+      "appEnv": "",
+      "easBuildProfile": "",
+      "eas": {
+        "projectId": "70d49e89-e1d1-49d1-abda-bb5a585a1eb7"
+      }
     }
   }
 }

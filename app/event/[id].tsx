@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -24,7 +23,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import * as Notifications from "expo-notifications";
 import * as ImagePicker from "expo-image-picker";
 import * as Brand from "@/constants/Colors";
-import { cancelGoingReminders, scheduleGoingReminders } from "@/utils/notifications";
+import {
+  cancelGoingReminders,
+  scheduleGoingReminders,
+} from "@/utils/notifications";
 import { extractStoragePath, resolveStorageUrl } from "@/utils/storage";
 import { resolveEventCoords } from "@/utils/geo";
 import { isLikelyUuid, parseRouteParam } from "@/utils/validation";
@@ -84,7 +86,8 @@ export default function EventDetailScreen() {
   const theme = useTheme();
   const { user, userRole } = useAuth();
   const [event, setEvent] = useState<EventDetail | null>(null);
-  const [organizerUsername, setOrganizerUsername] = useState<string>("Organizator");
+  const [organizerUsername, setOrganizerUsername] =
+    useState<string>("Organizator");
   const [loading, setLoading] = useState(true);
   const [isGoing, setIsGoing] = useState(false);
   const [goingCount, setGoingCount] = useState(0);
@@ -98,8 +101,14 @@ export default function EventDetailScreen() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [userImageCount, setUserImageCount] = useState(0);
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [error, setError] = useState<{ title: string; message: string } | null>(null);
-  const [toast, setToast] = useState<{ visible: boolean; message: string; type: "success" | "error" | "info" }>({
+  const [error, setError] = useState<{ title: string; message: string } | null>(
+    null,
+  );
+  const [toast, setToast] = useState<{
+    visible: boolean;
+    message: string;
+    type: "success" | "error" | "info";
+  }>({
     visible: false,
     message: "",
     type: "info",
@@ -118,13 +127,19 @@ export default function EventDetailScreen() {
 
     const fetchEventDetail = async () => {
       if (!eventId) {
-        setError({ title: "Neveljaven dogodek", message: "Manjka ID dogodka." });
+        setError({
+          title: "Neveljaven dogodek",
+          message: "Manjka ID dogodka.",
+        });
         setLoading(false);
         return;
       }
 
       if (!isLikelyUuid(eventId)) {
-        setError({ title: "Neveljaven dogodek", message: "ID dogodka ni veljaven." });
+        setError({
+          title: "Neveljaven dogodek",
+          message: "ID dogodka ni veljaven.",
+        });
         setLoading(false);
         return;
       }
@@ -146,7 +161,7 @@ export default function EventDetailScreen() {
         const { data, error: fetchError } = await query;
 
         if (fetchError) {
-          if (fetchError.message?.includes('aborted')) {
+          if (fetchError.message?.includes("aborted")) {
             return;
           }
           throw fetchError;
@@ -233,7 +248,8 @@ export default function EventDetailScreen() {
         // Fetch comments - FIXED: using 'content' column instead of 'body'
         const { data: commentsData, error: commentsError } = await supabase
           .from("event_comments")
-          .select(`
+          .select(
+            `
             id,
             user_id,
             content,
@@ -242,7 +258,8 @@ export default function EventDetailScreen() {
               username,
               avatar_url
             )
-          `)
+          `,
+          )
           .eq("event_id", eventId)
           .order("created_at", { ascending: false });
 
@@ -253,7 +270,8 @@ export default function EventDetailScreen() {
         // Fetch images
         const { data: imagesData, error: imagesError } = await supabase
           .from("event_images")
-          .select(`
+          .select(
+            `
             id,
             user_id,
             image_url,
@@ -261,7 +279,8 @@ export default function EventDetailScreen() {
             profiles:user_id (
               username
             )
-          `)
+          `,
+          )
           .eq("event_id", eventId)
           .order("created_at", { ascending: false });
 
@@ -270,16 +289,22 @@ export default function EventDetailScreen() {
             (imagesData as any[]).map(async (img) => ({
               ...img,
               image_path: img.image_url,
-              image_url: await resolveStorageUrl({ bucket: "event-images", value: img.image_url }),
-            }))
+              image_url: await resolveStorageUrl({
+                bucket: "event-images",
+                value: img.image_url,
+              }),
+            })),
           );
           setImages(resolvedImages as any);
         }
 
-        const resolvedPoster = await resolveStorageUrl({ bucket: "event-posters", value: (data as any)?.poster_url });
+        const resolvedPoster = await resolveStorageUrl({
+          bucket: "event-posters",
+          value: (data as any)?.poster_url,
+        });
         setEvent({ ...(data as any), poster_url: resolvedPoster } as any);
       } catch (err: any) {
-        if (err.name === 'AbortError' || err.message?.includes('aborted')) {
+        if (err.name === "AbortError" || err.message?.includes("aborted")) {
           return;
         }
         console.error("[Event Detail] Error:", err);
@@ -302,15 +327,16 @@ export default function EventDetailScreen() {
   }, [eventId, user]);
 
   const requestNotificationPermission = async () => {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    const { status: existingStatus } =
+      await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
 
-    if (existingStatus !== 'granted') {
+    if (existingStatus !== "granted") {
       const { status } = await Notifications.requestPermissionsAsync();
       finalStatus = status;
     }
 
-    return finalStatus === 'granted';
+    return finalStatus === "granted";
   };
 
   const showLoginRequiredModal = () => {
@@ -376,11 +402,12 @@ export default function EventDetailScreen() {
         // User wants to mark as going
         // Request notification permission
         const hasPermission = await requestNotificationPermission();
-        
+
         if (!hasPermission) {
           setToast({
             visible: true,
-            message: "Dovoljenje za obvestila je zavrnjeno. Omogočite ga v nastavitvah za prejemanje opomnikov.",
+            message:
+              "Dovoljenje za obvestila je zavrnjeno. Omogočite ga v nastavitvah za prejemanje opomnikov.",
             type: "info",
           });
         }
@@ -409,8 +436,8 @@ export default function EventDetailScreen() {
 
         setToast({
           visible: true,
-          message: hasPermission 
-            ? "Dodano v vaše dogodke. Prejeli boste opomnik 3 dni in 1 uro pred dogodkom." 
+          message: hasPermission
+            ? "Dodano v vaše dogodke. Prejeli boste opomnik 3 dni in 1 uro pred dogodkom."
             : "Dodano v vaše dogodke.",
           type: "success",
         });
@@ -444,7 +471,7 @@ export default function EventDetailScreen() {
             duration: 150,
             useNativeDriver: true,
           }),
-        ])
+        ]),
       );
     }
 
@@ -452,8 +479,13 @@ export default function EventDetailScreen() {
   };
 
   const handleRating = async (rating: number) => {
-    console.log("[Event Detail] Rating attempt:", rating, "User:", user ? "logged in" : "not logged in");
-    
+    console.log(
+      "[Event Detail] Rating attempt:",
+      rating,
+      "User:",
+      user ? "logged in" : "not logged in",
+    );
+
     if (!user) {
       console.log("[Event Detail] User not logged in, showing login modal");
       showLoginRequiredModal();
@@ -520,7 +552,7 @@ export default function EventDetailScreen() {
       }
 
       setUserRating(rating);
-      
+
       // Recalculate average rating
       const { data: ratingsData, error: ratingsError } = await supabase
         .from("event_ratings")
@@ -603,7 +635,8 @@ export default function EventDetailScreen() {
           user_id: user.id,
           content: newComment.trim(),
         })
-        .select(`
+        .select(
+          `
           id,
           user_id,
           content,
@@ -612,7 +645,8 @@ export default function EventDetailScreen() {
             username,
             avatar_url
           )
-        `)
+        `,
+        )
         .single();
 
       if (insertError) {
@@ -636,7 +670,10 @@ export default function EventDetailScreen() {
     }
   };
 
-  const handleDeleteComment = async (commentId: string, commentUserId: string) => {
+  const handleDeleteComment = async (
+    commentId: string,
+    commentUserId: string,
+  ) => {
     if (!user) {
       showLoginRequiredModal();
       return;
@@ -726,8 +763,9 @@ export default function EventDetailScreen() {
     }
 
     try {
-      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
+      const permissionResult =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+
       if (!permissionResult.granted) {
         setToast({
           visible: true,
@@ -774,7 +812,9 @@ export default function EventDetailScreen() {
       }
       setUploadProgress(90);
 
-      const publicUrl = supabase.storage.from("event-images").getPublicUrl(filePath).data.publicUrl;
+      const publicUrl = supabase.storage
+        .from("event-images")
+        .getPublicUrl(filePath).data.publicUrl;
 
       const { data, error: insertError } = await supabase
         .from("event_images")
@@ -784,7 +824,8 @@ export default function EventDetailScreen() {
           // Store public URL for consistency with older rows.
           image_url: publicUrl,
         })
-        .select(`
+        .select(
+          `
           id,
           user_id,
           image_url,
@@ -792,15 +833,26 @@ export default function EventDetailScreen() {
           profiles:user_id (
             username
           )
-        `)
+        `,
+        )
         .single();
 
       if (insertError) {
         throw insertError;
       }
 
-      const resolvedUrl = await resolveStorageUrl({ bucket: "event-images", value: (data as any)?.image_url });
-      setImages((prev) => [{ ...(data as any), image_path: filePath, image_url: resolvedUrl } as any, ...prev]);
+      const resolvedUrl = await resolveStorageUrl({
+        bucket: "event-images",
+        value: (data as any)?.image_url,
+      });
+      setImages((prev) => [
+        {
+          ...(data as any),
+          image_path: filePath,
+          image_url: resolvedUrl,
+        } as any,
+        ...prev,
+      ]);
       setUserImageCount((prev) => prev + 1);
       setUploadProgress(100);
       setToast({
@@ -821,7 +873,11 @@ export default function EventDetailScreen() {
     }
   };
 
-  const handleDeleteImage = async (imageId: string, imageUserId: string, imagePathOrUrl?: string | null) => {
+  const handleDeleteImage = async (
+    imageId: string,
+    imageUserId: string,
+    imagePathOrUrl?: string | null,
+  ) => {
     if (!user) {
       showLoginRequiredModal();
       return;
@@ -840,9 +896,14 @@ export default function EventDetailScreen() {
     try {
       const storagePath = extractStoragePath(imagePathOrUrl ?? undefined);
       if (storagePath) {
-        const { error: removeError } = await supabase.storage.from("event-images").remove([storagePath]);
+        const { error: removeError } = await supabase.storage
+          .from("event-images")
+          .remove([storagePath]);
         if (removeError) {
-          console.warn("[Event Detail] Failed to remove image from storage:", removeError);
+          console.warn(
+            "[Event Detail] Failed to remove image from storage:",
+            removeError,
+          );
         }
       }
 
@@ -900,18 +961,26 @@ export default function EventDetailScreen() {
       return;
     }
     if (!event) return;
-    console.log("[Event Detail] Navigating to organizer profile:", event.organizer_id);
+    console.log(
+      "[Event Detail] Navigating to organizer profile:",
+      event.organizer_id,
+    );
     router.push(`/organizer/profile/${event.organizer_id}` as any);
   };
 
   if (loading) {
     return (
-      <Animated.View 
+      <Animated.View
         entering={FadeIn.duration(300)}
-        style={[styles.centerContainer, { backgroundColor: theme.colors.background }]}
+        style={[
+          styles.centerContainer,
+          { backgroundColor: theme.colors.background },
+        ]}
       >
         <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={[styles.loadingText, { color: theme.colors.text }]}>Nalaganje...</Text>
+        <Text style={[styles.loadingText, { color: theme.colors.text }]}>
+          Nalaganje...
+        </Text>
       </Animated.View>
     );
   }
@@ -920,11 +989,88 @@ export default function EventDetailScreen() {
     return (
       <>
         <Stack.Screen
-          options={{
-            title: "Dogodek",
+          options={
+            {
+              title: "Dogodek",
+              headerShown: true,
+              headerBackTitleVisible: false,
+              headerBackTitle: "",
+              headerLeft: () => (
+                <TouchableOpacity
+                  onPress={() => {
+                    try {
+                      router.back();
+                    } catch {
+                      router.replace("/(tabs)/(home)/" as any);
+                    }
+                  }}
+                  style={{ paddingHorizontal: 8, paddingVertical: 6 }}
+                  activeOpacity={0.8}
+                >
+                  <IconSymbol
+                    ios_icon_name="arrow.left"
+                    android_material_icon_name="arrow-back"
+                    size={22}
+                    color={Brand.accentOrange}
+                  />
+                </TouchableOpacity>
+              ),
+            } as any
+          }
+        />
+        <View
+          style={[
+            styles.centerContainer,
+            { backgroundColor: theme.colors.background },
+          ]}
+        >
+          <IconSymbol
+            ios_icon_name="exclamationmark.triangle"
+            android_material_icon_name="error"
+            size={64}
+            color={Brand.textSecondary}
+          />
+          <Text style={[styles.errorText, { color: theme.colors.text }]}>
+            Dogodek ni najden
+          </Text>
+        </View>
+      </>
+    );
+  }
+
+  const startsAtDate = event.starts_at ? new Date(event.starts_at) : new Date();
+  const endsAtDate = event.ends_at ? new Date(event.ends_at) : new Date();
+  const now = new Date();
+  const dateDisplay = startsAtDate.toLocaleDateString("sl-SI", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+  const timeDisplay = startsAtDate.toLocaleTimeString("sl-SI", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const priceText =
+    event.price_type === "free" ? "Brezplačno" : `€${event.price || 0}`;
+  const isCancelled = event.status === "cancelled";
+  const hasEnded = now > endsAtDate;
+  const isOngoing = now >= startsAtDate && now <= endsAtDate;
+  const canInteract = hasEnded && isGoing;
+  const venueDisplay =
+    (event.address || "").split(",")[0]?.trim() || "Neznano prizorišče";
+
+  const goingButtonText = isGoing ? "Ne Grem" : "Grem";
+  const goingButtonDisabled = isGoing && now >= startsAtDate;
+
+  return (
+    <>
+      <Stack.Screen
+        options={
+          {
+            title: event.title,
             headerShown: true,
-            headerBackTitleVisible: false,
             headerBackTitle: "",
+            headerBackTitleVisible: false,
             headerLeft: () => (
               <TouchableOpacity
                 onPress={() => {
@@ -945,75 +1091,14 @@ export default function EventDetailScreen() {
                 />
               </TouchableOpacity>
             ),
-          } as any}
-        />
-        <View style={[styles.centerContainer, { backgroundColor: theme.colors.background }]}>
-          <IconSymbol
-            ios_icon_name="exclamationmark.triangle"
-            android_material_icon_name="error"
-            size={64}
-            color={Brand.textSecondary}
-          />
-          <Text style={[styles.errorText, { color: theme.colors.text }]}>Dogodek ni najden</Text>
-        </View>
-      </>
-    );
-  }
-
-  const startsAtDate = event.starts_at ? new Date(event.starts_at) : new Date();
-  const endsAtDate = event.ends_at ? new Date(event.ends_at) : new Date();
-  const now = new Date();
-  const dateDisplay = startsAtDate.toLocaleDateString("sl-SI", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
-  const timeDisplay = startsAtDate.toLocaleTimeString("sl-SI", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  const priceText = event.price_type === "free" ? "Brezplačno" : `€${event.price || 0}`;
-  const isCancelled = event.status === "cancelled";
-  const hasEnded = now > endsAtDate;
-  const isOngoing = now >= startsAtDate && now <= endsAtDate;
-  const canInteract = hasEnded && isGoing;
-  const venueDisplay = (event.address || "").split(",")[0]?.trim() || "Neznano prizorišče";
-
-  const goingButtonText = isGoing ? "Ne Grem" : "Grem";
-  const goingButtonDisabled = isGoing && now >= startsAtDate;
-
-  return (
-    <>
-      <Stack.Screen
-        options={{
-          title: event.title,
-          headerShown: true,
-          headerBackTitle: "",
-          headerBackTitleVisible: false,
-          headerLeft: () => (
-            <TouchableOpacity
-              onPress={() => {
-                try {
-                  router.back();
-                } catch {
-                  router.replace("/(tabs)/(home)/" as any);
-                }
-              }}
-              style={{ paddingHorizontal: 8, paddingVertical: 6 }}
-              activeOpacity={0.8}
-            >
-              <IconSymbol
-                ios_icon_name="arrow.left"
-                android_material_icon_name="arrow-back"
-                size={22}
-                color={Brand.accentOrange}
-              />
-            </TouchableOpacity>
-          ),
-          animation: "slide_from_right",
-        } as any}
+            animation: "slide_from_right",
+          } as any
+        }
       />
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={["bottom"]}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+        edges={["bottom"]}
+      >
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {event.poster_url && (
             <Image source={{ uri: event.poster_url }} style={styles.poster} />
@@ -1022,8 +1107,10 @@ export default function EventDetailScreen() {
           <View style={styles.content}>
             <View style={styles.header}>
               <View style={styles.titleRow}>
-                <Text style={[styles.title, { color: theme.colors.text }]}>{event.title}</Text>
-                <TouchableOpacity 
+                <Text style={[styles.title, { color: theme.colors.text }]}>
+                  {event.title}
+                </Text>
+                <TouchableOpacity
                   style={styles.goingBadge}
                   onPress={handleViewAttendees}
                   activeOpacity={0.7}
@@ -1034,7 +1121,12 @@ export default function EventDetailScreen() {
                     size={16}
                     color={theme.colors.primary}
                   />
-                  <Text style={[styles.goingBadgeText, { color: theme.colors.primary }]}>
+                  <Text
+                    style={[
+                      styles.goingBadgeText,
+                      { color: theme.colors.primary },
+                    ]}
+                  >
                     {goingCount}
                   </Text>
                 </TouchableOpacity>
@@ -1058,13 +1150,19 @@ export default function EventDetailScreen() {
                     );
                   })}
                 </View>
-                <Text style={[styles.ratingText, { color: Brand.textSecondary }]}>
+                <Text
+                  style={[styles.ratingText, { color: Brand.textSecondary }]}
+                >
                   {avgRating.toFixed(1)}
                 </Text>
-                <Text style={[styles.ratingText, { color: Brand.textSecondary }]}>
+                <Text
+                  style={[styles.ratingText, { color: Brand.textSecondary }]}
+                >
                   /
                 </Text>
-                <Text style={[styles.ratingText, { color: Brand.textSecondary }]}>
+                <Text
+                  style={[styles.ratingText, { color: Brand.textSecondary }]}
+                >
                   5.0
                 </Text>
               </View>
@@ -1126,7 +1224,9 @@ export default function EventDetailScreen() {
                   size={20}
                   color={Brand.highlightYellow}
                 />
-                <Text style={[styles.metaText, { color: theme.colors.primary }]}>
+                <Text
+                  style={[styles.metaText, { color: theme.colors.primary }]}
+                >
                   {event.address || "Naslov ni na voljo"}
                 </Text>
               </TouchableOpacity>
@@ -1150,7 +1250,12 @@ export default function EventDetailScreen() {
                   size={20}
                   color={Brand.secondaryGradientEnd}
                 />
-                <Text style={[styles.metaText, { color: theme.colors.text, flex: 1 }]}>
+                <Text
+                  style={[
+                    styles.metaText,
+                    { color: theme.colors.text, flex: 1 },
+                  ]}
+                >
                   {event.lineup || "Lineup ni naveden"}
                 </Text>
               </View>
@@ -1167,34 +1272,47 @@ export default function EventDetailScreen() {
                 </Text>
               </View>
 
-              {event.ticket_url && (
-                null
-              )}
+              {event.ticket_url && null}
 
-              <TouchableOpacity style={styles.metaRow} onPress={handleViewOrganizer}>
+              <TouchableOpacity
+                style={styles.metaRow}
+                onPress={handleViewOrganizer}
+              >
                 <IconSymbol
                   ios_icon_name="person.fill"
                   android_material_icon_name="person"
                   size={20}
                   color={Brand.secondaryGradientEnd}
                 />
-                <Text style={[styles.metaText, { color: theme.colors.primary }]}>
+                <Text
+                  style={[styles.metaText, { color: theme.colors.primary }]}
+                >
                   {organizerUsername}
                 </Text>
               </TouchableOpacity>
             </View>
 
-            <View style={[styles.section, { backgroundColor: theme.colors.card }]}
+            <View
+              style={[styles.section, { backgroundColor: theme.colors.card }]}
             >
-              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>O dogodku</Text>
-              <Text style={[styles.description, { color: theme.colors.text }]}
-              >
+              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+                O dogodku
+              </Text>
+              <Text style={[styles.description, { color: theme.colors.text }]}>
                 {event.description || "Ni opisa"}
               </Text>
               {event.lineup ? (
                 <>
-                  <Text style={[styles.subSectionTitle, { color: theme.colors.text }]}>Lineup</Text>
-                  <Text style={[styles.description, { color: theme.colors.text }]}
+                  <Text
+                    style={[
+                      styles.subSectionTitle,
+                      { color: theme.colors.text },
+                    ]}
+                  >
+                    Nastopajoči
+                  </Text>
+                  <Text
+                    style={[styles.description, { color: theme.colors.text }]}
                   >
                     {event.lineup}
                   </Text>
@@ -1214,15 +1332,25 @@ export default function EventDetailScreen() {
                   disabled={goingButtonDisabled}
                 >
                   <IconSymbol
-                    ios_icon_name={isGoing ? "checkmark.circle.fill" : "plus.circle"}
-                    android_material_icon_name={isGoing ? "check-circle" : "add-circle"}
+                    ios_icon_name={
+                      isGoing ? "checkmark.circle.fill" : "plus.circle"
+                    }
+                    android_material_icon_name={
+                      isGoing ? "check-circle" : "add-circle"
+                    }
                     size={24}
-                    color={isGoing ? Brand.primaryGradientStart : Brand.accentOrange}
+                    color={
+                      isGoing ? Brand.primaryGradientStart : Brand.accentOrange
+                    }
                   />
                   <Text
                     style={[
                       styles.actionButtonText,
-                      { color: isGoing ? Brand.primaryGradientStart : Brand.accentOrange },
+                      {
+                        color: isGoing
+                          ? Brand.primaryGradientStart
+                          : Brand.accentOrange,
+                      },
                     ]}
                   >
                     {goingButtonText}
@@ -1232,11 +1360,18 @@ export default function EventDetailScreen() {
             )}
 
             {canInteract && userRating === null && (
-              <View style={[styles.section, { backgroundColor: theme.colors.card }]}>
-                <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Ocenite dogodek</Text>
+              <View
+                style={[styles.section, { backgroundColor: theme.colors.card }]}
+              >
+                <Text
+                  style={[styles.sectionTitle, { color: theme.colors.text }]}
+                >
+                  Ocenite dogodek
+                </Text>
                 <View style={styles.ratingSection}>
                   {[1, 2, 3, 4, 5].map((rating) => {
-                    const isLit = hoveredRating !== null ? rating <= hoveredRating : false;
+                    const isLit =
+                      hoveredRating !== null ? rating <= hoveredRating : false;
                     return (
                       <TouchableOpacity
                         key={rating}
@@ -1245,18 +1380,29 @@ export default function EventDetailScreen() {
                         onPressOut={() => setHoveredRating(null)}
                         style={styles.ratingButton}
                       >
-                        <RNAnimated.Text 
+                        <RNAnimated.Text
                           style={[
                             styles.starLarge,
                             {
-                              transform: [{ scale: starAnimations[rating - 1] }],
-                              color: isLit ? Brand.starActive : Brand.starInactive,
+                              transform: [
+                                { scale: starAnimations[rating - 1] },
+                              ],
+                              color: isLit
+                                ? Brand.starActive
+                                : Brand.starInactive,
                             },
                           ]}
                         >
                           {isLit ? "⭐" : "☆"}
                         </RNAnimated.Text>
-                        <Text style={[styles.ratingLabel, { color: theme.colors.text }]}>{rating}</Text>
+                        <Text
+                          style={[
+                            styles.ratingLabel,
+                            { color: theme.colors.text },
+                          ]}
+                        >
+                          {rating}
+                        </Text>
                       </TouchableOpacity>
                     );
                   })}
@@ -1265,13 +1411,29 @@ export default function EventDetailScreen() {
             )}
 
             {userRating !== null && (
-              <View style={[styles.section, { backgroundColor: theme.colors.card }]}>
-                <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Vaša ocena</Text>
+              <View
+                style={[styles.section, { backgroundColor: theme.colors.card }]}
+              >
+                <Text
+                  style={[styles.sectionTitle, { color: theme.colors.text }]}
+                >
+                  Vaša ocena
+                </Text>
                 <View style={styles.stars}>
                   {[1, 2, 3, 4, 5].map((star) => {
                     const isLit = star <= userRating;
                     return (
-                      <Text key={star} style={[styles.star, { color: isLit ? Brand.starActive : Brand.starInactive }]}>
+                      <Text
+                        key={star}
+                        style={[
+                          styles.star,
+                          {
+                            color: isLit
+                              ? Brand.starActive
+                              : Brand.starInactive,
+                          },
+                        ]}
+                      >
                         {isLit ? "⭐" : "☆"}
                       </Text>
                     );
@@ -1280,22 +1442,45 @@ export default function EventDetailScreen() {
               </View>
             )}
 
-
-
             {canInteract && (
               <>
-                <View style={[styles.section, { backgroundColor: theme.colors.card }]}>
+                <View
+                  style={[
+                    styles.section,
+                    { backgroundColor: theme.colors.card },
+                  ]}
+                >
                   <View style={styles.sectionHeader}>
-                    <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+                    <Text
+                      style={[
+                        styles.sectionTitle,
+                        { color: theme.colors.text },
+                      ]}
+                    >
                       Slike
                     </Text>
-                    <Text style={[styles.sectionSubtitle, { color: Brand.textSecondary }]}>
+                    <Text
+                      style={[
+                        styles.sectionSubtitle,
+                        { color: Brand.textSecondary },
+                      ]}
+                    >
                       {userImageCount}
                     </Text>
-                    <Text style={[styles.sectionSubtitle, { color: Brand.textSecondary }]}>
+                    <Text
+                      style={[
+                        styles.sectionSubtitle,
+                        { color: Brand.textSecondary },
+                      ]}
+                    >
                       /
                     </Text>
-                    <Text style={[styles.sectionSubtitle, { color: Brand.textSecondary }]}>
+                    <Text
+                      style={[
+                        styles.sectionSubtitle,
+                        { color: Brand.textSecondary },
+                      ]}
+                    >
                       5
                     </Text>
                   </View>
@@ -1303,11 +1488,21 @@ export default function EventDetailScreen() {
                     <View style={styles.imagesGrid}>
                       {images.map((img) => (
                         <View key={img.id} style={styles.imageContainer}>
-                          <Image source={{ uri: img.image_url }} style={styles.eventImageThumb} />
-                          {(userRole === "admin" || user?.id === img.user_id) && (
+                          <Image
+                            source={{ uri: img.image_url }}
+                            style={styles.eventImageThumb}
+                          />
+                          {(userRole === "admin" ||
+                            user?.id === img.user_id) && (
                             <TouchableOpacity
                               style={styles.deleteImageButton}
-                              onPress={() => handleDeleteImage(img.id, img.user_id, img.image_path ?? img.image_url)}
+                              onPress={() =>
+                                handleDeleteImage(
+                                  img.id,
+                                  img.user_id,
+                                  img.image_path ?? img.image_url,
+                                )
+                              }
                             >
                               <IconSymbol
                                 ios_icon_name="trash"
@@ -1323,14 +1518,24 @@ export default function EventDetailScreen() {
                   )}
                   {userImageCount < 5 && (
                     <TouchableOpacity
-                      style={[styles.uploadButton, { borderColor: theme.colors.primary }]}
+                      style={[
+                        styles.uploadButton,
+                        { borderColor: theme.colors.primary },
+                      ]}
                       onPress={handleUploadImage}
                       disabled={uploadingImage}
                     >
                       {uploadingImage ? (
                         <View style={styles.uploadProgressWrap}>
                           <ActivityIndicator color={theme.colors.primary} />
-                          <Text style={[styles.uploadProgressText, { color: theme.colors.primary }]}>{uploadProgress}%</Text>
+                          <Text
+                            style={[
+                              styles.uploadProgressText,
+                              { color: theme.colors.primary },
+                            ]}
+                          >
+                            {uploadProgress}%
+                          </Text>
                         </View>
                       ) : (
                         <>
@@ -1340,7 +1545,12 @@ export default function EventDetailScreen() {
                             size={24}
                             color={theme.colors.primary}
                           />
-                          <Text style={[styles.uploadButtonText, { color: theme.colors.primary }]}>
+                          <Text
+                            style={[
+                              styles.uploadButtonText,
+                              { color: theme.colors.primary },
+                            ]}
+                          >
                             Naloži sliko
                           </Text>
                         </>
@@ -1349,13 +1559,31 @@ export default function EventDetailScreen() {
                   )}
                 </View>
 
-                <View style={[styles.section, { backgroundColor: theme.colors.card }]}>
+                <View
+                  style={[
+                    styles.section,
+                    { backgroundColor: theme.colors.card },
+                  ]}
+                >
                   <View style={styles.sectionHeader}>
-                    <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Komentarji</Text>
+                    <Text
+                      style={[
+                        styles.sectionTitle,
+                        { color: theme.colors.text },
+                      ]}
+                    >
+                      Komentarji
+                    </Text>
                   </View>
                   <View style={styles.commentInputContainer}>
                     <TextInput
-                      style={[styles.commentInput, { color: theme.colors.text, borderColor: theme.colors.border }]}
+                      style={[
+                        styles.commentInput,
+                        {
+                          color: theme.colors.text,
+                          borderColor: theme.colors.border,
+                        },
+                      ]}
                       placeholder="Dodaj komentar..."
                       placeholderTextColor={Brand.textSecondary}
                       value={newComment}
@@ -1364,7 +1592,10 @@ export default function EventDetailScreen() {
                       maxLength={300}
                     />
                     <TouchableOpacity
-                      style={[styles.commentButton, { backgroundColor: theme.colors.primary }]}
+                      style={[
+                        styles.commentButton,
+                        { backgroundColor: theme.colors.primary },
+                      ]}
                       onPress={handleAddComment}
                     >
                       <IconSymbol
@@ -1378,13 +1609,27 @@ export default function EventDetailScreen() {
                   {comments.length > 0 && (
                     <View style={styles.commentsList}>
                       {comments.map((comment) => (
-                        <View key={comment.id} style={[styles.commentCard, { backgroundColor: theme.colors.card }]}>
+                        <View
+                          key={comment.id}
+                          style={[
+                            styles.commentCard,
+                            { backgroundColor: theme.colors.card },
+                          ]}
+                        >
                           <View style={styles.commentHeader}>
                             <View style={styles.commentUserInfo}>
                               {comment.profiles.avatar_url ? (
-                                <Image source={{ uri: comment.profiles.avatar_url }} style={styles.commentAvatar} />
+                                <Image
+                                  source={{ uri: comment.profiles.avatar_url }}
+                                  style={styles.commentAvatar}
+                                />
                               ) : (
-                                <View style={[styles.commentAvatarPlaceholder, { backgroundColor: theme.colors.primary }]}>
+                                <View
+                                  style={[
+                                    styles.commentAvatarPlaceholder,
+                                    { backgroundColor: theme.colors.primary },
+                                  ]}
+                                >
                                   <IconSymbol
                                     ios_icon_name="person.fill"
                                     android_material_icon_name="person"
@@ -1393,12 +1638,25 @@ export default function EventDetailScreen() {
                                   />
                                 </View>
                               )}
-                              <Text style={[styles.commentUsername, { color: theme.colors.text }]}>
+                              <Text
+                                style={[
+                                  styles.commentUsername,
+                                  { color: theme.colors.text },
+                                ]}
+                              >
                                 {comment.profiles.username}
                               </Text>
                             </View>
-                            {(userRole === "admin" || user?.id === comment.user_id) && (
-                              <TouchableOpacity onPress={() => handleDeleteComment(comment.id, comment.user_id)}>
+                            {(userRole === "admin" ||
+                              user?.id === comment.user_id) && (
+                              <TouchableOpacity
+                                onPress={() =>
+                                  handleDeleteComment(
+                                    comment.id,
+                                    comment.user_id,
+                                  )
+                                }
+                              >
                                 <IconSymbol
                                   ios_icon_name="trash"
                                   android_material_icon_name="delete"
@@ -1408,7 +1666,12 @@ export default function EventDetailScreen() {
                               </TouchableOpacity>
                             )}
                           </View>
-                          <Text style={[styles.commentBody, { color: theme.colors.text }]}>
+                          <Text
+                            style={[
+                              styles.commentBody,
+                              { color: theme.colors.text },
+                            ]}
+                          >
                             {comment.content}
                           </Text>
                         </View>
@@ -1421,7 +1684,10 @@ export default function EventDetailScreen() {
 
             {event.ticket_url && (
               <TouchableOpacity
-                style={[styles.ticketButton, { backgroundColor: theme.colors.primary }]}
+                style={[
+                  styles.ticketButton,
+                  { backgroundColor: theme.colors.primary },
+                ]}
                 onPress={() => Linking.openURL(event.ticket_url!)}
               >
                 <Text style={styles.ticketButtonText}>Kupi vstopnice</Text>

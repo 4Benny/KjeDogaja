@@ -25,7 +25,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon-1024.png",
+        "foregroundImage": "./assets/images/app-icon-1024.png",
         "backgroundColor": "#390533"
       },
       "edgeToEdgeEnabled": true,
@@ -37,13 +37,7 @@
         "INTERNET",
         "ACCESS_NETWORK_STATE"
       ],
-      "blockedPermissions": [
-        "android.permission.RECORD_AUDIO"
-      ],
-      "usesCleartextTraffic": false,
-      "networkSecurityConfig": {
-        "domainConfigs": []
-      }
+      "blockedPermissions": ["android.permission.RECORD_AUDIO"]
     },
     "web": {
       "favicon": "./assets/images/logo.png",

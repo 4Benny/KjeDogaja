@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   View,
   Text,
@@ -18,27 +17,39 @@ import * as Brand from "@/constants/Colors";
 
 export default function VerifyOTPScreen() {
   const router = useRouter();
-  const { email, password } = useLocalSearchParams<{ email: string; password: string }>();
-  
+  const { email, password } = useLocalSearchParams<{
+    email: string;
+    password: string;
+  }>();
+  const otpInputRef = useRef<TextInput>(null);
+
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<{ title: string; message: string } | null>(null);
+  const [error, setError] = useState<{ title: string; message: string } | null>(
+    null,
+  );
 
   const emailDisplay = email || "";
+  const otpDigits = otp.split("");
+
+  const handleOtpChange = (text: string) => {
+    setOtp(text.replace(/[^0-9]/g, "").slice(0, 6));
+  };
 
   const handleVerifyOTP = async () => {
     if (!otp || otp.length !== 6) {
       setError({
-        title: "Invalid OTP",
-        message: "Please enter the 6-digit code sent to your email",
+        title: "Neveljavna koda",
+        message: "Vnesite 6-mestno kodo, poslano na vaš e-poštni naslov",
       });
       return;
     }
 
     if (!email || !password) {
       setError({
-        title: "Error",
-        message: "Missing email or password. Please try signing up again.",
+        title: "Napaka",
+        message:
+          "Manjka e-poštni naslov ali geslo. Poskusite se registrirati znova.",
       });
       return;
     }
@@ -47,13 +58,14 @@ export default function VerifyOTPScreen() {
 
     try {
       console.log("[VerifyOTP] Verifying OTP for email:", email);
-      
+
       // Verify OTP
-      const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
-        email,
-        token: otp,
-        type: "email",
-      });
+      const { data: verifyData, error: verifyError } =
+        await supabase.auth.verifyOtp({
+          email,
+          token: otp,
+          type: "email",
+        });
 
       if (verifyError) {
         throw verifyError;
@@ -62,11 +74,11 @@ export default function VerifyOTPScreen() {
       console.log("[VerifyOTP] OTP verified successfully");
 
       // Wait for session to be established
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // Get current session
       const { data: sessionData } = await supabase.auth.getSession();
-      
+
       if (!sessionData.session) {
         throw new Error("Session not established after OTP verification");
       }
@@ -76,8 +88,9 @@ export default function VerifyOTPScreen() {
     } catch (err: any) {
       console.error("[VerifyOTP] Error:", err);
       setError({
-        title: "Verification Failed",
-        message: err.message || "Invalid or expired code. Please try again.",
+        title: "Potrditev ni uspela",
+        message:
+          err.message || "Koda je neveljavna ali je potekla. Poskusite znova.",
       });
     } finally {
       setLoading(false);
@@ -87,8 +100,9 @@ export default function VerifyOTPScreen() {
   const handleResendCode = async () => {
     if (!email || !password) {
       setError({
-        title: "Error",
-        message: "Cannot resend code. Please try signing up again.",
+        title: "Napaka",
+        message:
+          "Kode ni mogoče ponovno poslati. Poskusite se registrirati znova.",
       });
       return;
     }
@@ -97,7 +111,7 @@ export default function VerifyOTPScreen() {
 
     try {
       console.log("[VerifyOTP] Resending verification code");
-      
+
       // Trigger a new signup to resend the code
       await supabase.auth.signUp({
         email,
@@ -108,14 +122,16 @@ export default function VerifyOTPScreen() {
       });
 
       setError({
-        title: "Code Sent",
-        message: "A new verification code has been sent to your email",
+        title: "Koda poslana",
+        message: "Nova potrditvena koda je bila poslana na vaš e-poštni naslov",
       });
     } catch (err: any) {
       console.error("[VerifyOTP] Resend error:", err);
       setError({
-        title: "Resend Failed",
-        message: err.message || "Failed to resend code. Please try again.",
+        title: "Ponovno pošiljanje ni uspelo",
+        message:
+          err.message ||
+          "Kode ni bilo mogoče ponovno poslati. Poskusite znova.",
       });
     } finally {
       setLoading(false);
@@ -130,25 +146,57 @@ export default function VerifyOTPScreen() {
         style={styles.keyboardView}
       >
         <View style={styles.content}>
-          <Text style={styles.title}>Verify Your Email</Text>
-          <Text style={styles.subtitle}>
-            We sent a 6-digit code to
-          </Text>
+          <Text style={styles.title}>Potrditev e-pošte</Text>
+          <Text style={styles.subtitle}>Poslali smo 6-mestno kodo na</Text>
           <Text style={styles.email}>{emailDisplay}</Text>
           <Text style={styles.instruction}>
-            Enter the code below to verify your email address
+            Vnesite spodnjo kodo za potrditev računa
           </Text>
 
-          <TextInput
-            style={styles.otpInput}
-            placeholder="000000"
-            placeholderTextColor={Brand.textSecondary}
-            value={otp}
-            onChangeText={(text) => setOtp(text.replace(/[^0-9]/g, ""))}
-            keyboardType="number-pad"
-            maxLength={6}
-            autoFocus
-          />
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => otpInputRef.current?.focus()}
+            style={styles.otpInputContainer}
+          >
+            {Array.from({ length: 6 }).map((_, index) => {
+              const digit = otpDigits[index];
+              const isActive = index === otp.length && otp.length < 6;
+
+              return (
+                <View
+                  key={index}
+                  style={[
+                    styles.otpCell,
+                    digit && styles.otpCellFilled,
+                    isActive && styles.otpCellActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.otpCellText,
+                      digit && styles.otpCellTextFilled,
+                    ]}
+                  >
+                    {digit || ""}
+                  </Text>
+                </View>
+              );
+            })}
+            <TextInput
+              ref={otpInputRef}
+              style={styles.hiddenOtpInput}
+              value={otp}
+              onChangeText={handleOtpChange}
+              keyboardType="number-pad"
+              maxLength={6}
+              autoFocus
+              autoComplete="one-time-code"
+              textContentType="oneTimeCode"
+              caretHidden
+              showSoftInputOnFocus
+              onSubmitEditing={handleVerifyOTP}
+            />
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.verifyButton, loading && styles.buttonDisabled]}
@@ -158,7 +206,7 @@ export default function VerifyOTPScreen() {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.verifyButtonText}>Verify Email</Text>
+              <Text style={styles.verifyButtonText}>Potrdi e-pošto</Text>
             )}
           </TouchableOpacity>
 
@@ -168,7 +216,7 @@ export default function VerifyOTPScreen() {
             disabled={loading}
           >
             <Text style={styles.resendButtonText}>
-              Didn&apos;t receive the code? Resend
+              Niste prejeli kode? Pošlji znova
             </Text>
           </TouchableOpacity>
         </View>
@@ -225,19 +273,44 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 32,
   },
-  otpInput: {
-    height: 60,
-    borderWidth: 2,
-    borderColor: Brand.accentOrange,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    fontSize: 32,
-    fontWeight: "bold",
-    textAlign: "center",
-    letterSpacing: 8,
+  otpInputContainer: {
+    position: "relative",
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: 24,
+  },
+  otpCell: {
+    width: 46,
+    height: 58,
+    borderWidth: 1,
+    borderColor: Brand.borderSubtle,
+    borderRadius: 16,
     backgroundColor: Brand.inputBg,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  otpCellActive: {
+    borderColor: Brand.accentOrange,
+    backgroundColor: Brand.secondaryGradientEnd,
+  },
+  otpCellFilled: {
+    borderColor: Brand.accentOrange,
+  },
+  otpCellText: {
+    fontSize: 26,
+    fontWeight: "700",
+    color: Brand.textSecondary,
+  },
+  otpCellTextFilled: {
     color: Brand.textPrimary,
+  },
+  hiddenOtpInput: {
+    position: "absolute",
+    opacity: 0,
+    width: 1,
+    height: 1,
+    left: 0,
+    top: 0,
   },
   verifyButton: {
     height: 50,

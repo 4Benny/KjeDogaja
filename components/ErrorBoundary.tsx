@@ -20,7 +20,13 @@
  */
 
 import React, { Component, ReactNode } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+} from "react-native";
 import * as Brand from "@/constants/Colors";
 
 interface Props {
@@ -85,14 +91,16 @@ export class ErrorBoundary extends Component<Props, State> {
       // Default fallback UI
       return (
         <View style={styles.container}>
-          <Text style={styles.title}>Oops! Something went wrong</Text>
+          <Text style={styles.title}>Ups! Nekaj je šlo narobe</Text>
           <Text style={styles.message}>
-            We're sorry for the inconvenience. The app encountered an error.
+            Oprostite za nevšečnosti. V aplikaciji je prišlo do napake.
           </Text>
 
           {__DEV__ && this.state.error && (
             <ScrollView style={styles.errorDetails}>
-              <Text style={styles.errorTitle}>Error Details (Dev Only):</Text>
+              <Text style={styles.errorTitle}>
+                Podrobnosti napake (samo za razvoj):
+              </Text>
               <Text style={styles.errorText}>
                 {this.state.error.toString()}
               </Text>
@@ -105,7 +113,7 @@ export class ErrorBoundary extends Component<Props, State> {
           )}
 
           <TouchableOpacity style={styles.button} onPress={this.handleReset}>
-            <Text style={styles.buttonText}>Try Again</Text>
+            <Text style={styles.buttonText}>Poskusi znova</Text>
           </TouchableOpacity>
         </View>
       );

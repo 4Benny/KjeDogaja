@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -50,7 +49,9 @@ export default function OnboardingScreen() {
   const [region, setRegion] = useState("");
   const [city, setCity] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<{ title: string; message: string } | null>(null);
+  const [error, setError] = useState<{ title: string; message: string } | null>(
+    null,
+  );
 
   const formatRegionLabel = (value: string) =>
     value.length > 0 ? value.charAt(0).toUpperCase() + value.slice(1) : value;
@@ -68,10 +69,13 @@ export default function OnboardingScreen() {
 
           await AsyncStorage.setItem(
             LOCATION_STORAGE_KEY,
-            JSON.stringify({ lat, lng })
+            JSON.stringify({ lat, lng }),
           );
 
-          const reverseGeocode = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+          const reverseGeocode = await Location.reverseGeocodeAsync({
+            latitude: lat,
+            longitude: lng,
+          });
           if (reverseGeocode.length > 0) {
             const location = reverseGeocode[0];
             const mappedRegion = mapToSlovenianRegion(location.region);
@@ -94,7 +98,9 @@ export default function OnboardingScreen() {
   const mapToSlovenianRegion = (regionName: string | null): string | null => {
     if (!regionName) return null;
     const normalized = regionName.toLowerCase();
-    const found = SLOVENIAN_REGIONS.find(r => normalized.includes(r) || r.includes(normalized));
+    const found = SLOVENIAN_REGIONS.find(
+      (r) => normalized.includes(r) || r.includes(normalized),
+    );
     return found || null;
   };
 
@@ -110,14 +116,18 @@ export default function OnboardingScreen() {
     if (!/^[a-z0-9_-]+$/.test(username)) {
       setError({
         title: "Napaka pri validaciji",
-        message: "Uporabniško ime lahko vsebuje samo male črke, številke, podčrtaje in pomišljaje",
+        message:
+          "Uporabniško ime lahko vsebuje samo male črke, številke, podčrtaje in pomišljaje",
       });
       return;
     }
 
     const trimmedAge = age.trim();
     const ageNum = trimmedAge ? parseInt(trimmedAge, 10) : null;
-    if (trimmedAge && (ageNum === null || Number.isNaN(ageNum) || ageNum <= 0 || ageNum > 110)) {
+    if (
+      trimmedAge &&
+      (ageNum === null || Number.isNaN(ageNum) || ageNum <= 0 || ageNum > 110)
+    ) {
       setError({
         title: "Neveljavna starost",
         message: "Prosimo vnesite veljavno starost",
@@ -136,7 +146,9 @@ export default function OnboardingScreen() {
     try {
       setLoading(true);
 
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
         throw new Error("Ni prijavljenega uporabnika");
       }
@@ -172,7 +184,9 @@ export default function OnboardingScreen() {
             .upload(filePath, arrayBuffer, { contentType: mime, upsert: true });
 
           if (!uploadError) {
-            avatarPublicUrl = supabase.storage.from("avatars").getPublicUrl(filePath).data.publicUrl;
+            avatarPublicUrl = supabase.storage
+              .from("avatars")
+              .getPublicUrl(filePath).data.publicUrl;
           } else {
             console.warn("Avatar upload failed:", uploadError);
           }
@@ -183,21 +197,19 @@ export default function OnboardingScreen() {
         }
       }
 
-      const { error: insertError } = await supabase
-        .from("profiles")
-        .insert({
-          id: user.id,
-          username: username.toLowerCase(),
-          email: user.email || null,
-          ...(ageNum ? { age: ageNum } : {}),
-          region: region || null,
-          city: city || null,
-          avatar_url: avatarPublicUrl,
-          instagram_username: instagram && instagram !== "@" ? instagram : null,
-          snapchat_username: snapchat && snapchat !== "@" ? snapchat : null,
-          role: "user",
-          show_location: true,
-        });
+      const { error: insertError } = await supabase.from("profiles").insert({
+        id: user.id,
+        username: username.toLowerCase(),
+        email: user.email || null,
+        ...(ageNum ? { age: ageNum } : {}),
+        region: region || null,
+        city: city || null,
+        avatar_url: avatarPublicUrl,
+        instagram_username: instagram && instagram !== "@" ? instagram : null,
+        snapchat_username: snapchat && snapchat !== "@" ? snapchat : null,
+        role: "user",
+        show_location: true,
+      });
 
       if (insertError) {
         throw insertError;
@@ -209,7 +221,7 @@ export default function OnboardingScreen() {
         const coords = CITY_FALLBACK_COORDS[cityKey];
         await AsyncStorage.setItem(
           LOCATION_STORAGE_KEY,
-          JSON.stringify(coords)
+          JSON.stringify(coords),
         );
       }
 
@@ -232,7 +244,7 @@ export default function OnboardingScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "padding"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
       >
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -269,11 +281,17 @@ export default function OnboardingScreen() {
 
             <Text style={styles.label}>Regija</Text>
             <TouchableOpacity
-              style={styles.input}
+              style={[styles.input, styles.selectButton]}
               onPress={() => setShowRegionList((s) => !s)}
               activeOpacity={0.8}
             >
-              <Text style={{ color: region ? Brand.textPrimary : Brand.textSecondary }}>
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.selectButtonText,
+                  { color: region ? Brand.textPrimary : Brand.textSecondary },
+                ]}
+              >
                 {region ? formatRegionLabel(region) : "Izberite regijo"}
               </Text>
             </TouchableOpacity>
@@ -284,10 +302,21 @@ export default function OnboardingScreen() {
                   {SLOVENIAN_REGIONS.map((r) => (
                     <TouchableOpacity
                       key={r}
-                      style={[styles.regionItem, region === r && styles.chipSelected]}
-                      onPress={() => { setRegion(r); setShowRegionList(false); }}
+                      style={[
+                        styles.regionItem,
+                        region === r && styles.chipSelected,
+                      ]}
+                      onPress={() => {
+                        setRegion(r);
+                        setShowRegionList(false);
+                      }}
                     >
-                      <Text style={[styles.chipText, region === r && styles.chipTextSelected]}>
+                      <Text
+                        style={[
+                          styles.chipText,
+                          region === r && styles.chipTextSelected,
+                        ]}
+                      >
                         {formatRegionLabel(r)}
                       </Text>
                     </TouchableOpacity>
@@ -307,12 +336,23 @@ export default function OnboardingScreen() {
             />
 
             <Text style={styles.label}>Profilna slika</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 12,
+                marginBottom: 12,
+              }}
+            >
               <TouchableOpacity
                 onPress={async () => {
-                  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-                  if (status !== 'granted') {
-                    setError({ title: 'Dovoljenje zavrnjeno', message: 'Dostop do galerije je potreben' });
+                  const { status } =
+                    await ImagePicker.requestMediaLibraryPermissionsAsync();
+                  if (status !== "granted") {
+                    setError({
+                      title: "Dovoljenje zavrnjeno",
+                      message: "Dostop do galerije je potreben",
+                    });
                     return;
                   }
                   const result = await ImagePicker.launchImageLibraryAsync({
@@ -326,17 +366,32 @@ export default function OnboardingScreen() {
                     setAvatarUri(result.assets[0].uri);
                   }
                 }}
-                style={{ width: 72, height: 72, borderRadius: 12, overflow: 'hidden', backgroundColor: Brand.surfaceDark, justifyContent: 'center', alignItems: 'center' }}
+                style={{
+                  width: 72,
+                  height: 72,
+                  borderRadius: 12,
+                  overflow: "hidden",
+                  backgroundColor: Brand.surfaceDark,
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
               >
                 {avatarUri ? (
-                  <Image source={{ uri: avatarUri }} style={{ width: 72, height: 72 }} />
+                  <Image
+                    source={{ uri: avatarUri }}
+                    style={{ width: 72, height: 72 }}
+                  />
                 ) : (
                   <Text style={{ color: Brand.textSecondary }}>Izberi</Text>
                 )}
               </TouchableOpacity>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: Brand.textSecondary, fontSize: 13 }}>Naložite profilno sliko (opcijsko)</Text>
-                {uploadingAvatar && <ActivityIndicator style={{ marginTop: 8 }} />}
+                <Text style={{ color: Brand.textSecondary, fontSize: 13 }}>
+                  Naložite profilno sliko (opcijsko)
+                </Text>
+                {uploadingAvatar && (
+                  <ActivityIndicator style={{ marginTop: 8 }} />
+                )}
               </View>
             </View>
 
@@ -442,6 +497,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: Brand.inputBg,
     color: Brand.textPrimary,
+    justifyContent: "center",
+    textAlignVertical: "center",
   },
   hint: {
     fontSize: 12,
@@ -472,6 +529,14 @@ const styles = StyleSheet.create({
   chipTextSelected: {
     color: Brand.textPrimary,
     fontWeight: "600",
+  },
+  selectButton: {
+    justifyContent: "center",
+    paddingVertical: 14,
+  },
+  selectButtonText: {
+    fontSize: 16,
+    lineHeight: 20,
   },
   completeButton: {
     height: 50,

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -27,7 +26,18 @@ import * as Brand from "@/constants/Colors";
 import { coordsForCity } from "@/utils/geo";
 import { normalizeLineup } from "@/utils/date";
 
-const GENRES = ["electronic", "rock", "pop", "hip-hop", "techno", "house", "trance", "dnb", "dubstep", "other"];
+const GENRES = [
+  "electronic",
+  "rock",
+  "pop",
+  "hip-hop",
+  "techno",
+  "house",
+  "trance",
+  "dnb",
+  "dubstep",
+  "other",
+];
 
 const SLOVENIAN_REGIONS = [
   "Koroška",
@@ -45,21 +55,29 @@ export default function CreateEventScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { user, userRole, loading: authLoading } = useAuth();
-  
+
   // ROUTE GUARD: Block users with role='user' from accessing this screen
-  const shouldRedirect = !authLoading && (!user || userRole === 'user');
-  
+  const shouldRedirect = !authLoading && (!user || userRole === "user");
+
   const [loading, setLoading] = useState(false);
   const [uploadingPoster, setUploadingPoster] = useState(false);
-  const [error, setError] = useState<{ title: string; message: string } | null>(null);
-  const [toast, setToast] = useState<{ visible: boolean; message: string; type: "success" | "error" | "info" }>({
+  const [error, setError] = useState<{ title: string; message: string } | null>(
+    null,
+  );
+  const [toast, setToast] = useState<{
+    visible: boolean;
+    message: string;
+    type: "success" | "error" | "info";
+  }>({
     visible: false,
     message: "",
     type: "info",
   });
 
   // Admin-specific state: organizer selection
-  const [organizers, setOrganizers] = useState<{ id: string; username: string }[]>([]);
+  const [organizers, setOrganizers] = useState<
+    { id: string; username: string }[]
+  >([]);
   const [selectedOrganizerId, setSelectedOrganizerId] = useState<string>("");
 
   const roundToNext5Minutes = (date: Date) => {
@@ -76,25 +94,25 @@ export default function CreateEventScreen() {
     const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
 
     return {
-    title: "",
-    description: "",
-    lineup: "",
-    posterUrl: "",
-    posterLocalUri: "",
-    region: "",
-    city: "",
-    address: "",
-    lat: 46.0569,
-    lng: 14.5058,
-    startsAt: start,
-    endsAt: end,
-    genre: "electronic",
-    ageLabel: "18+",
-    priceType: "free",
-    price: null as number | null,
-    ticketUrl: "",
-    status: "draft",
-  };
+      title: "",
+      description: "",
+      lineup: "",
+      posterUrl: "",
+      posterLocalUri: "",
+      region: "",
+      city: "",
+      address: "",
+      lat: 46.0569,
+      lng: 14.5058,
+      startsAt: start,
+      endsAt: end,
+      genre: "electronic",
+      ageLabel: "18+",
+      priceType: "free",
+      price: null as number | null,
+      ticketUrl: "",
+      status: "draft",
+    };
   });
 
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
@@ -107,10 +125,12 @@ export default function CreateEventScreen() {
 
   const ensureValidRange = (startsAt: Date, endsAt: Date) => {
     const minStart = roundToNext5Minutes(new Date(Date.now() + 5 * 60 * 1000));
-    const safeStart = startsAt.getTime() < minStart.getTime() ? minStart : startsAt;
-    const safeEnd = endsAt.getTime() <= safeStart.getTime()
-      ? new Date(safeStart.getTime() + 2 * 60 * 60 * 1000)
-      : endsAt;
+    const safeStart =
+      startsAt.getTime() < minStart.getTime() ? minStart : startsAt;
+    const safeEnd =
+      endsAt.getTime() <= safeStart.getTime()
+        ? new Date(safeStart.getTime() + 2 * 60 * 60 * 1000)
+        : endsAt;
     return { safeStart, safeEnd };
   };
 
@@ -118,12 +138,12 @@ export default function CreateEventScreen() {
   // If organizer, set their own ID as the organizer
   useEffect(() => {
     const fetchOrganizers = async () => {
-      if (userRole !== 'admin' && userRole !== 'organizer') {
+      if (userRole !== "admin" && userRole !== "organizer") {
         return;
       }
 
       try {
-        if (userRole === 'admin') {
+        if (userRole === "admin") {
           const { data, error: fetchError } = await supabase
             .from("profiles")
             .select("id, username")
@@ -131,7 +151,10 @@ export default function CreateEventScreen() {
             .order("username");
 
           if (fetchError) {
-            console.error("[Create Event] Error fetching organizers:", fetchError);
+            console.error(
+              "[Create Event] Error fetching organizers:",
+              fetchError,
+            );
             return;
           }
 
@@ -152,8 +175,9 @@ export default function CreateEventScreen() {
   const handlePosterSelect = async () => {
     try {
       console.log("[Ustvari dogodek] Zahtevanje dovoljenja za izbiro slike");
-      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
+      const permissionResult =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+
       if (!permissionResult.granted) {
         setToast({
           visible: true,
@@ -207,11 +231,17 @@ export default function CreateEventScreen() {
       address: formData.address,
       status: formData.status,
     });
-    
-    if (!formData.title || !formData.region || !formData.city || !formData.address) {
+
+    if (
+      !formData.title ||
+      !formData.region ||
+      !formData.city ||
+      !formData.address
+    ) {
       setToast({
         visible: true,
-        message: "Prosimo izpolnite vsa obvezna polja (naslov, regija, mesto, naslov)",
+        message:
+          "Prosimo izpolnite vsa obvezna polja (naslov, regija, mesto, naslov)",
         type: "error",
       });
       return;
@@ -246,7 +276,7 @@ export default function CreateEventScreen() {
     }
 
     // Admin MUST select an organizer
-    if (userRole === 'admin' && !selectedOrganizerId) {
+    if (userRole === "admin" && !selectedOrganizerId) {
       setToast({
         visible: true,
         message: "Prosimo izberite organizatorja",
@@ -258,19 +288,28 @@ export default function CreateEventScreen() {
     try {
       setLoading(true);
       console.log("[Ustvari dogodek] Pridobivanje trenutnega uporabnika");
-      
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      
+
+      const {
+        data: { user: currentUser },
+      } = await supabase.auth.getUser();
+
       if (!currentUser) {
         throw new Error("Ni prijavljenega uporabnika");
       }
 
       // Determine organizer_id: admin can assign to any organizer, organizer uses their own ID
-      const organizerId = userRole === 'admin' ? selectedOrganizerId : currentUser.id;
+      const organizerId =
+        userRole === "admin" ? selectedOrganizerId : currentUser.id;
 
-      console.log("[Ustvari dogodek] Ustvarjanje dogodka v Supabase za organizatorja:", organizerId);
+      console.log(
+        "[Ustvari dogodek] Ustvarjanje dogodka v Supabase za organizatorja:",
+        organizerId,
+      );
       console.log("[Ustvari dogodek] Current user ID:", currentUser.id);
-      console.log("[Ustvari dogodek] Selected organizer ID (admin only):", selectedOrganizerId);
+      console.log(
+        "[Ustvari dogodek] Selected organizer ID (admin only):",
+        selectedOrganizerId,
+      );
 
       let resolvedLat = formData.lat;
       let resolvedLng = formData.lng;
@@ -282,9 +321,12 @@ export default function CreateEventScreen() {
           resolvedLng = results[0].longitude;
         }
       } catch (geoErr) {
-        console.warn("[Ustvari dogodek] Geocoding failed, using existing coords:", geoErr);
+        console.warn(
+          "[Ustvari dogodek] Geocoding failed, using existing coords:",
+          geoErr,
+        );
       }
-      
+
       // INSERT event with all required fields
       // RLS policy ensures:
       // - Organizers can only insert with organizer_id = auth.uid()
@@ -335,10 +377,13 @@ export default function CreateEventScreen() {
         try {
           setUploadingPoster(true);
           console.log("[Ustvari dogodek] Nalaganje plakata invoked");
-          
+
           const uri = formData.posterLocalUri;
           const fileExtFromUri = uri.split("?")[0].split(".").pop();
-          const safeExt = fileExtFromUri && fileExtFromUri.length <= 5 ? fileExtFromUri : "jpg";
+          const safeExt =
+            fileExtFromUri && fileExtFromUri.length <= 5
+              ? fileExtFromUri
+              : "jpg";
           const filePath = `${data.id}/poster.${safeExt}`;
 
           const response = await fetch(uri);
@@ -354,14 +399,19 @@ export default function CreateEventScreen() {
             });
 
           if (uploadError) {
-            console.error("[Ustvari dogodek] Napaka pri nalaganju:", uploadError);
+            console.error(
+              "[Ustvari dogodek] Napaka pri nalaganju:",
+              uploadError,
+            );
             throw uploadError;
           }
 
           console.log("[Ustvari dogodek] Plakat naložen, pot:", filePath);
           console.log("[Ustvari dogodek] Posodabljanje dogodka z URL plakata");
 
-          const publicUrl = supabase.storage.from("event-posters").getPublicUrl(filePath).data.publicUrl;
+          const publicUrl = supabase.storage
+            .from("event-posters")
+            .getPublicUrl(filePath).data.publicUrl;
 
           const { error: updateError } = await supabase
             .from("events")
@@ -369,7 +419,10 @@ export default function CreateEventScreen() {
             .eq("id", data.id);
 
           if (updateError) {
-            console.error("[Ustvari dogodek] Napaka pri posodabljanju:", updateError);
+            console.error(
+              "[Ustvari dogodek] Napaka pri posodabljanju:",
+              updateError,
+            );
             throw updateError;
           }
 
@@ -385,7 +438,7 @@ export default function CreateEventScreen() {
           setUploadingPoster(false);
         }
       }
-      
+
       setToast({
         visible: true,
         message: "Dogodek uspešno ustvarjen",
@@ -413,34 +466,50 @@ export default function CreateEventScreen() {
 
   if (authLoading) {
     return (
-      <View style={[styles.centerContainer, { backgroundColor: theme.colors.background }]}>
+      <View
+        style={[
+          styles.centerContainer,
+          { backgroundColor: theme.colors.background },
+        ]}
+      >
         <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
     );
   }
 
   const startDateDisplay = formData.startsAt.toLocaleDateString();
-  const startTimeDisplay = formData.startsAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const startTimeDisplay = formData.startsAt.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
   const endDateDisplay = formData.endsAt.toLocaleDateString();
-  const endTimeDisplay = formData.endsAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const endTimeDisplay = formData.endsAt.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
   return (
     <>
       <Stack.Screen
-        options={{
-          title: "Ustvari dogodek",
-          headerShown: true,
-          headerBackTitleVisible: false,
-          headerBackTitle: "",
-        } as any}
+        options={
+          {
+            title: "Ustvari dogodek",
+            headerShown: true,
+            headerBackTitleVisible: false,
+            headerBackTitle: "",
+          } as any
+        }
       />
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={["bottom"]}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+        edges={["bottom"]}
+      >
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "padding"}
           keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
           style={styles.keyboardView}
         >
-          <ScrollView 
+          <ScrollView
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
@@ -448,23 +517,36 @@ export default function CreateEventScreen() {
             scrollEventThrottle={16}
           >
             <View style={styles.form}>
-              {userRole === 'admin' && (
+              {userRole === "admin" && (
                 <>
-                  <Text style={[styles.label, { color: theme.colors.text }]}>Organizator *</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+                  <Text style={[styles.label, { color: theme.colors.text }]}>
+                    Organizator *
+                  </Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.chipScroll}
+                  >
                     {organizers.map((org) => (
                       <TouchableOpacity
                         key={org.id}
                         style={[
                           styles.chip,
-                          selectedOrganizerId === org.id && { backgroundColor: theme.colors.primary },
+                          selectedOrganizerId === org.id && {
+                            backgroundColor: theme.colors.primary,
+                          },
                         ]}
                         onPress={() => setSelectedOrganizerId(org.id)}
                       >
                         <Text
                           style={[
                             styles.chipText,
-                            { color: selectedOrganizerId === org.id ? Brand.primaryGradientStart : theme.colors.text },
+                            {
+                              color:
+                                selectedOrganizerId === org.id
+                                  ? Brand.primaryGradientStart
+                                  : theme.colors.text,
+                            },
                           ]}
                         >
                           {org.username}
@@ -475,71 +557,129 @@ export default function CreateEventScreen() {
                 </>
               )}
 
-              <Text style={[styles.label, { color: theme.colors.text }]}>Naslov *</Text>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                Naslov *
+              </Text>
               <TextInput
-                style={[styles.input, { color: theme.colors.text, borderColor: theme.colors.border }]}
+                style={[
+                  styles.input,
+                  {
+                    color: theme.colors.text,
+                    borderColor: theme.colors.border,
+                  },
+                ]}
                 placeholder="Naslov dogodka"
                 placeholderTextColor={Brand.textSecondary}
                 value={formData.title}
-                onChangeText={(text) => setFormData({ ...formData, title: text })}
+                onChangeText={(text) =>
+                  setFormData({ ...formData, title: text })
+                }
               />
 
-              <Text style={[styles.label, { color: theme.colors.text }]}>Opis</Text>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                Opis
+              </Text>
               <TextInput
-                style={[styles.textArea, { color: theme.colors.text, borderColor: theme.colors.border }]}
+                style={[
+                  styles.textArea,
+                  {
+                    color: theme.colors.text,
+                    borderColor: theme.colors.border,
+                  },
+                ]}
                 placeholder="Opis dogodka (max 4000 znakov)"
                 placeholderTextColor={Brand.textSecondary}
                 value={formData.description}
-                onChangeText={(text) => setFormData({ ...formData, description: text })}
+                onChangeText={(text) =>
+                  setFormData({ ...formData, description: text })
+                }
                 multiline
                 numberOfLines={4}
                 maxLength={4000}
               />
 
-              <Text style={[styles.label, { color: theme.colors.text }]}>Lineup</Text>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                Lineup
+              </Text>
               <TextInput
-                style={[styles.textArea, { color: theme.colors.text, borderColor: theme.colors.border }]}
-                placeholder="npr. Artist A, Artist B, Artist C"
+                style={[
+                  styles.textArea,
+                  {
+                    color: theme.colors.text,
+                    borderColor: theme.colors.border,
+                  },
+                ]}
+                placeholder="npr. Izvajalec A, Izvajalec B, Izvajalec C"
                 placeholderTextColor={Brand.textSecondary}
                 value={formData.lineup}
-                onChangeText={(text) => setFormData({ ...formData, lineup: text })}
+                onChangeText={(text) =>
+                  setFormData({ ...formData, lineup: text })
+                }
                 multiline
                 numberOfLines={3}
               />
 
-              <Text style={[styles.label, { color: theme.colors.text }]}>Plakat</Text>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                Plakat
+              </Text>
               {formData.posterLocalUri && (
-                <Image source={{ uri: formData.posterLocalUri }} style={styles.posterPreview} />
+                <Image
+                  source={{ uri: formData.posterLocalUri }}
+                  style={styles.posterPreview}
+                />
               )}
               <TouchableOpacity
-                style={[styles.uploadButton, { borderColor: theme.colors.primary }]}
+                style={[
+                  styles.uploadButton,
+                  { borderColor: theme.colors.primary },
+                ]}
                 onPress={handlePosterSelect}
                 disabled={uploadingPoster}
               >
                 {uploadingPoster ? (
                   <ActivityIndicator color={theme.colors.primary} />
                 ) : (
-                  <Text style={[styles.uploadButtonText, { color: theme.colors.primary }]}>
-                    {formData.posterLocalUri ? "Zamenjaj plakat" : "Naloži plakat"}
+                  <Text
+                    style={[
+                      styles.uploadButtonText,
+                      { color: theme.colors.primary },
+                    ]}
+                  >
+                    {formData.posterLocalUri
+                      ? "Zamenjaj plakat"
+                      : "Naloži plakat"}
                   </Text>
                 )}
               </TouchableOpacity>
 
-              <Text style={[styles.label, { color: theme.colors.text }]}>Regija * (samo slovenske regije)</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                Regija * (samo slovenske regije)
+              </Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.chipScroll}
+              >
                 {SLOVENIAN_REGIONS.map((region) => (
                   <TouchableOpacity
                     key={region}
                     style={[
                       styles.chip,
-                      formData.region === region && { backgroundColor: theme.colors.primary },
+                      formData.region === region && {
+                        backgroundColor: theme.colors.primary,
+                      },
                     ]}
                     onPress={() => setFormData({ ...formData, region })}
                   >
                     <Text
                       style={[
                         styles.chipText,
-                        { color: formData.region === region ? Brand.primaryGradientStart : theme.colors.text },
+                        {
+                          color:
+                            formData.region === region
+                              ? Brand.primaryGradientStart
+                              : theme.colors.text,
+                        },
                       ]}
                     >
                       {region}
@@ -548,9 +688,17 @@ export default function CreateEventScreen() {
                 ))}
               </ScrollView>
 
-              <Text style={[styles.label, { color: theme.colors.text }]}>Mesto * (samo ime mesta)</Text>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                Mesto * (samo ime mesta)
+              </Text>
               <TextInput
-                style={[styles.input, { color: theme.colors.text, borderColor: theme.colors.border }]}
+                style={[
+                  styles.input,
+                  {
+                    color: theme.colors.text,
+                    borderColor: theme.colors.border,
+                  },
+                ]}
                 placeholder="npr. Ljubljana, Maribor, Celje"
                 placeholderTextColor={Brand.textSecondary}
                 value={formData.city}
@@ -567,18 +715,33 @@ export default function CreateEventScreen() {
                 }
               />
 
-              <Text style={[styles.label, { color: theme.colors.text }]}>Naslov *</Text>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                Naslov *
+              </Text>
               <TextInput
-                style={[styles.input, { color: theme.colors.text, borderColor: theme.colors.border }]}
+                style={[
+                  styles.input,
+                  {
+                    color: theme.colors.text,
+                    borderColor: theme.colors.border,
+                  },
+                ]}
                 placeholder="Polni naslov"
                 placeholderTextColor={Brand.textSecondary}
                 value={formData.address}
-                onChangeText={(text) => setFormData({ ...formData, address: text })}
+                onChangeText={(text) =>
+                  setFormData({ ...formData, address: text })
+                }
               />
 
-              <Text style={[styles.label, { color: theme.colors.text }]}>Datum začetka *</Text>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                Datum začetka *
+              </Text>
               <TouchableOpacity
-                style={[styles.dateButton, { borderColor: theme.colors.border }]}
+                style={[
+                  styles.dateButton,
+                  { borderColor: theme.colors.border },
+                ]}
                 onPress={() => setShowStartDatePicker(true)}
               >
                 <Text style={[styles.dateText, { color: theme.colors.text }]}>
@@ -603,17 +766,29 @@ export default function CreateEventScreen() {
                     setShowStartDatePicker(false);
                     setFormData((prev) => {
                       const newStartsAt = new Date(prev.startsAt);
-                      newStartsAt.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
-                      const { safeStart, safeEnd } = ensureValidRange(newStartsAt, prev.endsAt);
+                      newStartsAt.setFullYear(
+                        date.getFullYear(),
+                        date.getMonth(),
+                        date.getDate(),
+                      );
+                      const { safeStart, safeEnd } = ensureValidRange(
+                        newStartsAt,
+                        prev.endsAt,
+                      );
                       return { ...prev, startsAt: safeStart, endsAt: safeEnd };
                     });
                   }}
                 />
               )}
 
-              <Text style={[styles.label, { color: theme.colors.text }]}>Čas začetka *</Text>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                Čas začetka *
+              </Text>
               <TouchableOpacity
-                style={[styles.dateButton, { borderColor: theme.colors.border }]}
+                style={[
+                  styles.dateButton,
+                  { borderColor: theme.colors.border },
+                ]}
                 onPress={() => setShowStartTimePicker(true)}
               >
                 <Text style={[styles.dateText, { color: theme.colors.text }]}>
@@ -638,17 +813,30 @@ export default function CreateEventScreen() {
                     setShowStartTimePicker(false);
                     setFormData((prev) => {
                       const newStartsAt = new Date(prev.startsAt);
-                      newStartsAt.setHours(date.getHours(), date.getMinutes(), 0, 0);
-                      const { safeStart, safeEnd } = ensureValidRange(newStartsAt, prev.endsAt);
+                      newStartsAt.setHours(
+                        date.getHours(),
+                        date.getMinutes(),
+                        0,
+                        0,
+                      );
+                      const { safeStart, safeEnd } = ensureValidRange(
+                        newStartsAt,
+                        prev.endsAt,
+                      );
                       return { ...prev, startsAt: safeStart, endsAt: safeEnd };
                     });
                   }}
                 />
               )}
 
-              <Text style={[styles.label, { color: theme.colors.text }]}>Datum konca *</Text>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                Datum konca *
+              </Text>
               <TouchableOpacity
-                style={[styles.dateButton, { borderColor: theme.colors.border }]}
+                style={[
+                  styles.dateButton,
+                  { borderColor: theme.colors.border },
+                ]}
                 onPress={() => setShowEndDatePicker(true)}
               >
                 <Text style={[styles.dateText, { color: theme.colors.text }]}>
@@ -673,17 +861,29 @@ export default function CreateEventScreen() {
                     setShowEndDatePicker(false);
                     setFormData((prev) => {
                       const newEndsAt = new Date(prev.endsAt);
-                      newEndsAt.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
-                      const { safeStart, safeEnd } = ensureValidRange(prev.startsAt, newEndsAt);
+                      newEndsAt.setFullYear(
+                        date.getFullYear(),
+                        date.getMonth(),
+                        date.getDate(),
+                      );
+                      const { safeStart, safeEnd } = ensureValidRange(
+                        prev.startsAt,
+                        newEndsAt,
+                      );
                       return { ...prev, startsAt: safeStart, endsAt: safeEnd };
                     });
                   }}
                 />
               )}
 
-              <Text style={[styles.label, { color: theme.colors.text }]}>Čas konca *</Text>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                Čas konca *
+              </Text>
               <TouchableOpacity
-                style={[styles.dateButton, { borderColor: theme.colors.border }]}
+                style={[
+                  styles.dateButton,
+                  { borderColor: theme.colors.border },
+                ]}
                 onPress={() => setShowEndTimePicker(true)}
               >
                 <Text style={[styles.dateText, { color: theme.colors.text }]}>
@@ -708,29 +908,50 @@ export default function CreateEventScreen() {
                     setShowEndTimePicker(false);
                     setFormData((prev) => {
                       const newEndsAt = new Date(prev.endsAt);
-                      newEndsAt.setHours(date.getHours(), date.getMinutes(), 0, 0);
-                      const { safeStart, safeEnd } = ensureValidRange(prev.startsAt, newEndsAt);
+                      newEndsAt.setHours(
+                        date.getHours(),
+                        date.getMinutes(),
+                        0,
+                        0,
+                      );
+                      const { safeStart, safeEnd } = ensureValidRange(
+                        prev.startsAt,
+                        newEndsAt,
+                      );
                       return { ...prev, startsAt: safeStart, endsAt: safeEnd };
                     });
                   }}
                 />
               )}
 
-              <Text style={[styles.label, { color: theme.colors.text }]}>Žanr *</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                Žanr *
+              </Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.chipScroll}
+              >
                 {GENRES.map((genre) => (
                   <TouchableOpacity
                     key={genre}
                     style={[
                       styles.chip,
-                      formData.genre === genre && { backgroundColor: theme.colors.primary },
+                      formData.genre === genre && {
+                        backgroundColor: theme.colors.primary,
+                      },
                     ]}
                     onPress={() => setFormData({ ...formData, genre })}
                   >
                     <Text
                       style={[
                         styles.chipText,
-                        { color: formData.genre === genre ? Brand.primaryGradientStart : theme.colors.text },
+                        {
+                          color:
+                            formData.genre === genre
+                              ? Brand.primaryGradientStart
+                              : theme.colors.text,
+                        },
                       ]}
                     >
                       {genre}
@@ -739,19 +960,30 @@ export default function CreateEventScreen() {
                 ))}
               </ScrollView>
 
-              <Text style={[styles.label, { color: theme.colors.text }]}>Tip cene *</Text>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                Tip cene *
+              </Text>
               <View style={styles.priceTypeRow}>
                 <TouchableOpacity
                   style={[
                     styles.priceTypeButton,
-                    formData.priceType === "free" && { backgroundColor: theme.colors.primary },
+                    formData.priceType === "free" && {
+                      backgroundColor: theme.colors.primary,
+                    },
                   ]}
-                  onPress={() => setFormData({ ...formData, priceType: "free", price: null })}
+                  onPress={() =>
+                    setFormData({ ...formData, priceType: "free", price: null })
+                  }
                 >
                   <Text
                     style={[
                       styles.priceTypeText,
-                      { color: formData.priceType === "free" ? Brand.textPrimary : theme.colors.text },
+                      {
+                        color:
+                          formData.priceType === "free"
+                            ? Brand.textPrimary
+                            : theme.colors.text,
+                      },
                     ]}
                   >
                     Brezplačno
@@ -760,14 +992,23 @@ export default function CreateEventScreen() {
                 <TouchableOpacity
                   style={[
                     styles.priceTypeButton,
-                    formData.priceType === "paid" && { backgroundColor: theme.colors.primary },
+                    formData.priceType === "paid" && {
+                      backgroundColor: theme.colors.primary,
+                    },
                   ]}
-                  onPress={() => setFormData({ ...formData, priceType: "paid" })}
+                  onPress={() =>
+                    setFormData({ ...formData, priceType: "paid" })
+                  }
                 >
                   <Text
                     style={[
                       styles.priceTypeText,
-                      { color: formData.priceType === "paid" ? Brand.textPrimary : theme.colors.text },
+                      {
+                        color:
+                          formData.priceType === "paid"
+                            ? Brand.textPrimary
+                            : theme.colors.text,
+                      },
                     ]}
                   >
                     Plačljivo
@@ -777,43 +1018,73 @@ export default function CreateEventScreen() {
 
               {formData.priceType === "paid" && (
                 <>
-                  <Text style={[styles.label, { color: theme.colors.text }]}>Cena (€)</Text>
+                  <Text style={[styles.label, { color: theme.colors.text }]}>
+                    Cena (€)
+                  </Text>
                   <TextInput
-                    style={[styles.input, { color: theme.colors.text, borderColor: theme.colors.border }]}
+                    style={[
+                      styles.input,
+                      {
+                        color: theme.colors.text,
+                        borderColor: theme.colors.border,
+                      },
+                    ]}
                     placeholder="10.00"
                     placeholderTextColor={Brand.textSecondary}
                     value={formData.price?.toString() || ""}
                     onChangeText={(text) =>
-                      setFormData({ ...formData, price: parseFloat(text) || null })
+                      setFormData({
+                        ...formData,
+                        price: parseFloat(text) || null,
+                      })
                     }
                     keyboardType="decimal-pad"
                   />
 
-                  <Text style={[styles.label, { color: theme.colors.text }]}>URL vstopnic</Text>
+                  <Text style={[styles.label, { color: theme.colors.text }]}>
+                    URL vstopnic
+                  </Text>
                   <TextInput
-                    style={[styles.input, { color: theme.colors.text, borderColor: theme.colors.border }]}
+                    style={[
+                      styles.input,
+                      {
+                        color: theme.colors.text,
+                        borderColor: theme.colors.border,
+                      },
+                    ]}
                     placeholder="https://vstopnice.primer.com"
                     placeholderTextColor={Brand.textSecondary}
                     value={formData.ticketUrl}
-                    onChangeText={(text) => setFormData({ ...formData, ticketUrl: text })}
+                    onChangeText={(text) =>
+                      setFormData({ ...formData, ticketUrl: text })
+                    }
                     autoCapitalize="none"
                   />
                 </>
               )}
 
-              <Text style={[styles.label, { color: theme.colors.text }]}>Status *</Text>
+              <Text style={[styles.label, { color: theme.colors.text }]}>
+                Status *
+              </Text>
               <View style={styles.priceTypeRow}>
                 <TouchableOpacity
                   style={[
                     styles.priceTypeButton,
-                    formData.status === "draft" && { backgroundColor: theme.colors.primary },
+                    formData.status === "draft" && {
+                      backgroundColor: theme.colors.primary,
+                    },
                   ]}
                   onPress={() => setFormData({ ...formData, status: "draft" })}
                 >
                   <Text
                     style={[
                       styles.priceTypeText,
-                      { color: formData.status === "draft" ? Brand.textPrimary : theme.colors.text },
+                      {
+                        color:
+                          formData.status === "draft"
+                            ? Brand.textPrimary
+                            : theme.colors.text,
+                      },
                     ]}
                   >
                     Osnutek
@@ -822,14 +1093,23 @@ export default function CreateEventScreen() {
                 <TouchableOpacity
                   style={[
                     styles.priceTypeButton,
-                    formData.status === "published" && { backgroundColor: theme.colors.primary },
+                    formData.status === "published" && {
+                      backgroundColor: theme.colors.primary,
+                    },
                   ]}
-                  onPress={() => setFormData({ ...formData, status: "published" })}
+                  onPress={() =>
+                    setFormData({ ...formData, status: "published" })
+                  }
                 >
                   <Text
                     style={[
                       styles.priceTypeText,
-                      { color: formData.status === "published" ? Brand.textPrimary : theme.colors.text },
+                      {
+                        color:
+                          formData.status === "published"
+                            ? Brand.textPrimary
+                            : theme.colors.text,
+                      },
                     ]}
                   >
                     Objavljeno
@@ -837,7 +1117,11 @@ export default function CreateEventScreen() {
                 </TouchableOpacity>
               </View>
 
-              <TouchableOpacity style={styles.createButton} onPress={handleCreate} disabled={loading}>
+              <TouchableOpacity
+                style={styles.createButton}
+                onPress={handleCreate}
+                disabled={loading}
+              >
                 <LinearGradient
                   colors={[Brand.secondaryGradientEnd, Brand.accentOrange]}
                   start={{ x: 0, y: 0 }}

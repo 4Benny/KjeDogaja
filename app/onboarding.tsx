@@ -258,7 +258,7 @@ export default function OnboardingScreen() {
             <Text style={styles.label}>Uporabniško ime</Text>
             <TextInput
               style={styles.input}
-              placeholder="JanezN5"
+              placeholder="Janez123"
               placeholderTextColor={Brand.textSecondary}
               value={username}
               onChangeText={(text) => setUsername(text.toLowerCase())}

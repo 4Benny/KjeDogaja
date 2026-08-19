@@ -9,12 +9,13 @@ export function toISO(date: Date): string {
   return new Date(date.getTime()).toISOString();
 }
 
+// Display in the device's local time zone — events are stored as UTC ISO
+// (Date.toISOString()), and the detail screen already renders local time.
 export function formatDateSL(date: Date): string {
   return date.toLocaleDateString("sl-SI", {
     year: "numeric",
     month: "short",
     day: "2-digit",
-    timeZone: "UTC",
   });
 }
 
@@ -23,7 +24,6 @@ export function formatTimeSL(date: Date): string {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
-    timeZone: "UTC",
   });
 }
 

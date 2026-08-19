@@ -20,25 +20,40 @@ export function Toast({
 }: ToastProps) {
   const opacity = React.useRef(new Animated.Value(0)).current;
 
+  // Keep the latest onHide in a ref so an inline arrow prop doesn't restart
+  // the animation on every parent re-render (which could keep the toast
+  // visible forever on screens that re-render frequently).
+  const onHideRef = React.useRef(onHide);
+  onHideRef.current = onHide;
+
   useEffect(() => {
-    if (visible) {
-      Animated.sequence([
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.delay(duration),
-        Animated.timing(opacity, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        onHide();
-      });
-    }
-  }, [visible, duration, onHide, opacity]);
+    if (!visible) return;
+
+    const sequence = Animated.sequence([
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.delay(duration),
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]);
+
+    sequence.start(({ finished }) => {
+      if (finished) {
+        onHideRef.current();
+      }
+    });
+
+    return () => {
+      sequence.stop();
+    };
+    // `message` restarts the timer when a new toast replaces a visible one.
+  }, [visible, message, duration, opacity]);
 
   if (!visible) return null;
 

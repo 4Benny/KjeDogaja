@@ -64,6 +64,7 @@ const SLOVENIAN_REGIONS = [
   "Prekmurje",
   "Notranjska",
   "Zasavska",
+  "Posavska",
 ];
 
 const LOCATION_STORAGE_KEY = "eventfinder_user_location";
@@ -90,6 +91,10 @@ export default function HomeScreen() {
   const abortControllerRef = useRef<AbortController | null>(null);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isFetchingRef = useRef(false);
+  // Mirrors `refreshing` without being a dependency of fetchEvents — keeping
+  // the state out of the deps avoids a second fetch (and skeleton flash)
+  // every time a pull-to-refresh finishes.
+  const refreshingRef = useRef(false);
 
   const calculateDistance = useCallback((lat1: number, lng1: number, lat2: number, lng2: number): number => {
     const R = 6371;
@@ -221,7 +226,7 @@ export default function HomeScreen() {
     isFetchingRef.current = true;
 
     try {
-      if (!refreshing && !silent) {
+      if (!refreshingRef.current && !silent) {
         setLoading(true);
       }
 
@@ -243,7 +248,7 @@ export default function HomeScreen() {
       if (organizerFilterId && isLikelyUuid(organizerFilterId)) {
         query = query.eq('organizer_id', organizerFilterId).order('starts_at', { ascending: false });
       } else {
-        query = query/*.gte("ends_at", now)*/.order("starts_at", { ascending: true });
+        query = query.gte("ends_at", now).order("starts_at", { ascending: true });
       }
 
       // Only apply abortSignal if the method exists (safer for different Supabase versions)
@@ -331,10 +336,11 @@ export default function HomeScreen() {
       setEvents([]);
     } finally {
       setLoading(false);
+      refreshingRef.current = false;
       setRefreshing(false);
       isFetchingRef.current = false;
     }
-  }, [location, selectedRegion, selectedGenre, searchQuery, calculateDistance, refreshing, organizerFilterId]);
+  }, [location, selectedRegion, selectedGenre, searchQuery, calculateDistance, organizerFilterId]);
 
   useEffect(() => {
     loadLocation();
@@ -377,6 +383,7 @@ export default function HomeScreen() {
 
   const onRefresh = useCallback(() => {
     console.log("[Feed] Manual refresh triggered");
+    refreshingRef.current = true;
     setRefreshing(true);
     fetchEvents();
   }, [fetchEvents]);
@@ -392,7 +399,7 @@ export default function HomeScreen() {
     }
 
     const cityText = item.city || "Neznano mesto";
-    const distanceText = item.distance ? `${item.distance.toFixed(1)} km` : "";
+    const distanceText = item.distance != null ? `${item.distance.toFixed(1)} km` : "";
     
     const timeLabel = getTimeLabel(item.starts_at);
 

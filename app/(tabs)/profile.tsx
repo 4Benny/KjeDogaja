@@ -52,7 +52,11 @@ const SLOVENIAN_REGIONS = [
   "prekmurje",
   "dolenjska",
   "posavska",
+  "zasavska",
 ];
+
+const formatRegionLabel = (value: string) =>
+  value.length > 0 ? value.charAt(0).toUpperCase() + value.slice(1) : value;
 
 export default function ProfileScreen() {
   const theme = useTheme();
@@ -567,7 +571,7 @@ export default function ProfileScreen() {
                         { color: editedProfile.region === region ? "#fff" : Brand.textPrimary },
                       ]}
                     >
-                      {region}
+                      {formatRegionLabel(region)}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -617,7 +621,9 @@ export default function ProfileScreen() {
                     color={Brand.textSecondary}
                   />
                   <Text style={[styles.infoText, { color: Brand.textPrimary }]}>
-                    {profile.city ? `${profile.city}, ${profile.region}` : profile.region}
+                    {profile.city
+                      ? `${profile.city}, ${formatRegionLabel(profile.region)}`
+                      : formatRegionLabel(profile.region)}
                   </Text>
                 </View>
               )}

@@ -51,6 +51,7 @@ const SLOVENIAN_REGIONS = [
   "Prekmurje",
   "Notranjska",
   "Zasavska",
+  "Posavska",
 ];
 
 export default function EditEventScreen() {
@@ -332,10 +333,22 @@ export default function EditEventScreen() {
     }
 
     const normalizedLineup = normalizeLineup(formData.lineup);
-    if (!normalizedLineup || !normalizedLineup.includes(",")) {
+    if (!normalizedLineup) {
       setToast({
         visible: true,
-        message: "Lineup je obvezen in mora biti ločen z vejicami",
+        message: "Lineup je obvezen (več izvajalcev ločite z vejicami)",
+        type: "error",
+      });
+      return;
+    }
+
+    if (
+      formData.priceType === "paid" &&
+      (!formData.price || formData.price <= 0)
+    ) {
+      setToast({
+        visible: true,
+        message: "Za plačljiv dogodek vnesite veljavno ceno",
         type: "error",
       });
       return;

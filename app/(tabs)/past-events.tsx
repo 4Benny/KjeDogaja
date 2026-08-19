@@ -51,6 +51,9 @@ export default function PastEventsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   
   const abortControllerRef = useRef<AbortController | null>(null);
+  // Mirrors `refreshing` without being a dependency of fetchPastEvents,
+  // so finishing a pull-to-refresh doesn't trigger a second fetch.
+  const refreshingRef = useRef(false);
 
   const fetchPastEvents = useCallback(async (silent = false) => {
     if (abortControllerRef.current) {
@@ -60,7 +63,7 @@ export default function PastEventsScreen() {
     abortControllerRef.current = new AbortController();
 
     try {
-      if (!refreshing && !silent) {
+      if (!refreshingRef.current && !silent) {
         setLoading(true);
       }
 
@@ -124,9 +127,10 @@ export default function PastEventsScreen() {
       setEvents([]);
     } finally {
       setLoading(false);
+      refreshingRef.current = false;
       setRefreshing(false);
     }
-  }, [refreshing]);
+  }, []);
 
   useEffect(() => {
     fetchPastEvents();
@@ -139,6 +143,7 @@ export default function PastEventsScreen() {
   }, [fetchPastEvents]);
 
   const onRefresh = useCallback(() => {
+    refreshingRef.current = true;
     setRefreshing(true);
     fetchPastEvents();
   }, [fetchPastEvents]);

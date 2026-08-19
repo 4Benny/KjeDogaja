@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Linking,
   TextInput,
+  Platform,
   Animated as RNAnimated,
 } from "react-native";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
@@ -62,10 +63,11 @@ interface Comment {
   user_id: string;
   content: string;
   created_at: string;
+  // Null when the commenting user's profile no longer exists.
   profiles: {
     username: string;
     avatar_url: string | null;
-  };
+  } | null;
 }
 
 interface EventImage {
@@ -940,8 +942,17 @@ export default function EventDetailScreen() {
     const coords = resolveEventCoords(event);
     const lat = coords?.lat ?? event.lat;
     const lng = coords?.lng ?? event.lng;
-    const url = `https://maps.apple.com/?q=${encodeURIComponent(event.address)}&ll=${lat},${lng}`;
-    Linking.openURL(url);
+    const label = encodeURIComponent(event.address || event.title);
+    // Apple Maps URLs are only handled natively on iOS; Android gets the
+    // geo: scheme (opens the user's map app), web gets Google Maps.
+    const url = Platform.select({
+      ios: `https://maps.apple.com/?q=${label}&ll=${lat},${lng}`,
+      android: `geo:${lat},${lng}?q=${lat},${lng}(${label})`,
+      default: `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,
+    });
+    Linking.openURL(url as string).catch((err) =>
+      console.warn("[Event Detail] Could not open maps:", err),
+    );
   };
 
   const handleViewAttendees = () => {
@@ -1144,8 +1155,14 @@ export default function EventDetailScreen() {
                   {[1, 2, 3, 4, 5].map((star) => {
                     const isLit = star <= Math.round(avgRating);
                     return (
-                      <Text key={star} style={styles.star}>
-                        {isLit ? "⭐" : "☆"}
+                      <Text
+                        key={star}
+                        style={[
+                          styles.star,
+                          { color: isLit ? Brand.starActive : Brand.starInactive },
+                        ]}
+                      >
+                        {isLit ? "★" : "☆"}
                       </Text>
                     );
                   })}
@@ -1272,8 +1289,6 @@ export default function EventDetailScreen() {
                 </Text>
               </View>
 
-              {event.ticket_url && null}
-
               <TouchableOpacity
                 style={styles.metaRow}
                 onPress={handleViewOrganizer}
@@ -1393,7 +1408,7 @@ export default function EventDetailScreen() {
                             },
                           ]}
                         >
-                          {isLit ? "⭐" : "☆"}
+                          {isLit ? "★" : "☆"}
                         </RNAnimated.Text>
                         <Text
                           style={[
@@ -1434,7 +1449,7 @@ export default function EventDetailScreen() {
                           },
                         ]}
                       >
-                        {isLit ? "⭐" : "☆"}
+                        {isLit ? "★" : "☆"}
                       </Text>
                     );
                   })}
@@ -1618,7 +1633,7 @@ export default function EventDetailScreen() {
                         >
                           <View style={styles.commentHeader}>
                             <View style={styles.commentUserInfo}>
-                              {comment.profiles.avatar_url ? (
+                              {comment.profiles?.avatar_url ? (
                                 <Image
                                   source={{ uri: comment.profiles.avatar_url }}
                                   style={styles.commentAvatar}
@@ -1644,7 +1659,7 @@ export default function EventDetailScreen() {
                                   { color: theme.colors.text },
                                 ]}
                               >
-                                {comment.profiles.username}
+                                {comment.profiles?.username || "Neznano"}
                               </Text>
                             </View>
                             {(userRole === "admin" ||

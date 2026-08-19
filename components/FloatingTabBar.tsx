@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Platform,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,8 +20,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import * as Colors from '@/constants/Colors';
-
-const { width: screenWidth } = Dimensions.get('window');
 
 export interface TabBarItem {
   name: string;
@@ -38,13 +36,16 @@ export default function FloatingTabBar({ tabs }: FloatingTabBarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const animatedValue = useSharedValue(0);
+  // useWindowDimensions keeps the bar correct after rotation / web resize,
+  // unlike a module-scope Dimensions.get() snapshot.
+  const { width: screenWidth } = useWindowDimensions();
 
   const layout = React.useMemo(() => {
-    const outerWidth = screenWidth - 32; // matches styles.container width
+    const outerWidth = screenWidth - 32; // matches container marginHorizontal
     const innerWidth = outerWidth - 16; // accounts for indicator left/right inset (8 + 8)
     const tabWidth = innerWidth / Math.max(1, tabs.length);
     return { outerWidth, innerWidth, tabWidth };
-  }, [tabs.length]);
+  }, [tabs.length, screenWidth]);
 
   // Improved active tab detection
   const activeTabIndex = React.useMemo(() => {
@@ -100,7 +101,7 @@ export default function FloatingTabBar({ tabs }: FloatingTabBarProps) {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <View style={styles.container}>
+      <View style={[styles.container, { width: layout.outerWidth }]}>
         <BlurView intensity={20} style={styles.blurContainer}>
           {/* Glassmorphism background */}
           <View style={styles.glassBackground} />
@@ -194,7 +195,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 16,
     alignSelf: 'center',
-    width: screenWidth - 32,
   },
   blurContainer: {
     borderRadius: Colors.borderRadiusPill,

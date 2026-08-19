@@ -33,6 +33,7 @@ const SLOVENIAN_REGIONS = [
   "prekmurje",
   "dolenjska",
   "posavska",
+  "zasavska",
 ];
 
 // CITY_FALLBACK_COORDS moved to utils/geo.ts

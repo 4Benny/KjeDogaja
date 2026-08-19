@@ -83,6 +83,9 @@ export default function OrganizerScreen() {
   });
   
   const abortControllerRef = useRef<AbortController | null>(null);
+  // Mirrors `refreshing` without being a dependency of fetchOrganizerEvents,
+  // so finishing a pull-to-refresh doesn't trigger a second fetch.
+  const refreshingRef = useRef(false);
 
   const isAbortLikeError = useCallback((value: any): boolean => {
     const parts = [
@@ -117,7 +120,7 @@ export default function OrganizerScreen() {
     abortControllerRef.current = new AbortController();
 
     try {
-      if (!refreshing) {
+      if (!refreshingRef.current) {
         setLoading(true);
       }
       
@@ -175,9 +178,10 @@ export default function OrganizerScreen() {
       });
     } finally {
       setLoading(false);
+      refreshingRef.current = false;
       setRefreshing(false);
     }
-  }, [user, userRole, refreshing, isAbortLikeError]);
+  }, [user, userRole, isAbortLikeError]);
 
   const hasEventStarted = useCallback((eventLike: { starts_at?: string | null } | null | undefined) => {
     const startsAt = eventLike?.starts_at;
@@ -469,6 +473,7 @@ export default function OrganizerScreen() {
 
   // Refresh callback - ALWAYS define at top level
   const onRefresh = useCallback(() => {
+    refreshingRef.current = true;
     setRefreshing(true);
     fetchOrganizerEvents();
   }, [fetchOrganizerEvents]);
